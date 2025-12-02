@@ -1,0 +1,13 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: pg_local
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      TZ: "Asia/Shanghai"
+    volumes:
+      - ./data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
