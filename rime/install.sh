@@ -3,6 +3,10 @@ set -e
 
 DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
 
+command_exists() {
+  command -v "$@" >/dev/null 2>&1
+}
+
 install_packages() {
     case "$OS" in
         ubuntu|debian)
