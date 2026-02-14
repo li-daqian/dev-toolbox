@@ -74,5 +74,7 @@ git clone https://github.com/agkozak/zsh-z ${ZSH_CUSTOM}/plugins/zsh-z --depth=1
 # Download custom .zshrc
 echo "$(curl -fsSL https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/.zshrc)" > ~/.zshrc
 
-# Switch to zsh
-exec zsh -l
+# Change default shell to zsh
+if [ "$SHELL" != "$(which zsh)" ]; then
+    chsh -s "$(which zsh)"
+fi

@@ -45,22 +45,27 @@ sudo apt update
 sudo apt install -y curl wget
 
 # Install Oh My Zsh
-curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s) | sh
+if ! command_exists zsh; then
+    echo "Zsh is not installed. Installing Zsh ..."
+    curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s) | sh
+fi
 
 # Install Java
 sudo apt install -y openjdk-21-jdk
 
-# Install nvm nodejs pnpm
-curl -fsSL  https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
-nvm install --lts
-npm install -g pnpm
+# Install nvm nodejs pnpm by zsh
+if ! command_exists nvm; then
+    echo "nvm is not installed. Installing nvm, nodejs and pnpm ..."
+    curl -fsSL  https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+    zsh -c "source ~/.zshrc && nvm install --lts && npm install -g pnpm"
+fi
 
 # Install Rime
 curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s) | sh
 
 # Install CopyQ
-sudo apt install -y software-properties-common python-software-properties
-sudo add-apt-repository ppa:hluk/copyq
+sudo apt install -y software-properties-common
+sudo add-apt-repository -y ppa:hluk/copyq
 sudo apt update
 sudo apt install -y copyq
 # Add Custom Shortcuts ‘Ctrl+Shift+V‘ for CopyQ
