@@ -44,6 +44,29 @@ fi
 sudo apt update
 sudo apt install -y curl wget
 
+# Configure UI
+# Make Dock position to bottom
+gsettings set org.gnome.shell.extensions.dash-to-dock dock-position 'BOTTOM'
+# Make Dock not auto-hide
+gsettings set org.gnome.shell.extensions.dash-to-dock dock-fixed true
+# Desktop Icons don't show Home Folder
+gsettings set org.gnome.shell.extensions.ding show-home false
+# Make Apperance style to Dark
+gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
+# Make large text on Accessibility's seeing section
+gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
+
+# Install 'Input Mono' font
+if ! fc-list | grep -q "Input Mono"; then
+    echo "Input Mono font is not installed. Installing Input Mono font ..."
+    mkdir -p ~/.local/share/fonts
+    curl -fsSL "https://input.djr.com/build/?fontSelection=whole&a=0&g=0&i=0&l=0&zero=0&asterisk=0&braces=0&preset=default&line-height=1.2&accept=I+do&email=" -o /tmp/Input-Font.zip
+    unzip -o /tmp/Input-Font.zip -d /tmp/Input-Font
+    cp /tmp/Input-Font/**/InputMono-*.ttf ~/.local/share/fonts/
+    rm -rf /tmp/Input-Font /tmp/Input-Font.zip
+    fc-cache -f -v
+fi
+
 # Install Oh My Zsh
 if ! command_exists zsh; then
     echo "Zsh is not installed. Installing Zsh ..."
