@@ -78,6 +78,7 @@ copyq config autostart true
 # Make CopyQ tray_item_paste work, need make 'Wayland' to 'X11' in /etc/gdm3/custom.conf and reboot
 sudo sed -i 's/#WaylandEnable=false/WaylandEnable=false/g' /etc/gdm3/custom.conf 
 # ⚠️ Warn user about restart requirement
+# ⚠️ Make this end of the script
 echo ""
 echo "=================================="
 echo "⚠️  IMPORTANT: System restart required"
