@@ -13,8 +13,8 @@ plugins=(
   zsh-z
 )
 
-# Disable bracketed paste mode, If enalbed will append '\' before '$' and '(' when pasting command, which is annoying.
-unset zle_bracketed_paste
+# Disable MAGIC_FUNCTIONS, If enalbed will append '\' before '$' and '(' when pasting command, which is annoying.
+DISABLE_MAGIC_FUNCTIONS=true
 
 # https://ohmyz.sh/
 source $ZSH/oh-my-zsh.sh
