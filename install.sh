@@ -75,3 +75,19 @@ gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/or
 gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/ binding '<Primary><Shift>V'
 # Make CopyQ start on login
 copyq config autostart true
+# Make CopyQ tray_item_paste work, need make 'Wayland' to 'X11' in /etc/gdm3/custom.conf and reboot
+sudo sed -i 's/#WaylandEnable=false/WaylandEnable=false/g' /etc/gdm3/custom.conf 
+# ⚠️ Warn user about restart requirement
+echo ""
+echo "=================================="
+echo "⚠️  IMPORTANT: System restart required"
+echo "=================================="
+echo "The display manager needs to be restarted to apply Wayland changes."
+echo "This will log you out immediately."
+echo ""
+read -p "Do you want to restart now? (y/N): " restart_confirm
+if [ "$restart_confirm" = "y" ] || [ "$restart_confirm" = "Y" ]; then
+    sudo systemctl restart gdm3
+else
+    echo "Please restart your system later with: sudo systemctl restart gdm3"
+fi
