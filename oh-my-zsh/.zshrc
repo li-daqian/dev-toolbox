@@ -13,5 +13,8 @@ plugins=(
   zsh-z
 )
 
+# Disable bracketed paste mode, If enalbed will append '\' before '$' and '(' when pasting command, which is annoying.
+unset zle_bracketed_paste
+
 # https://ohmyz.sh/
 source $ZSH/oh-my-zsh.sh
