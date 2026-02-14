@@ -68,12 +68,4 @@ gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/or
 gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/ command 'copyq toggle'
 gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/ binding '<Primary><Shift>V'
 # Make CopyQ start on login
-mkdir -p ~/.config/autostart
-echo "[Desktop Entry]
-Type=Application
-Exec=copyq
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-Name=CopyQ
-Comment=Clipboard Manager" > ~/.config/autostart/copyq.desktop
+copyq config autostart true
