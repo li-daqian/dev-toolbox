@@ -11,6 +11,6 @@ if ! docker info > /dev/null 2>&1; then
 fi
 
 # Start PostgreSQL service
-docker-compose up -d
+docker compose up -d
 
 echo "PostgreSQL service has been started."
