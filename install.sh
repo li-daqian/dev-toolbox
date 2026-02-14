@@ -18,6 +18,7 @@ case "$OS_TYPE" in
             exit 1
         fi
         ;;
+    *)
         echo "Unsupported OS: $OS_TYPE"
         exit 1
         ;;
