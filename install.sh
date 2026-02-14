@@ -55,6 +55,8 @@ gsettings set org.gnome.shell.extensions.ding show-home false
 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 # Make large text on Accessibility's seeing section
 gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
+# Make Dock click action to minimize when app is focused
+gsettings set org.gnome.shell.extensions.dash-to-dock click-action 'minimize'
 
 # Install 'Input Mono' font
 if ! fc-list | grep -q "Input Mono"; then
