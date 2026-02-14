@@ -47,6 +47,6 @@ install_packages
 # Install Rime configuration
 RIME_CONFIG_DIR="$HOME/.config/ibus/rime"
 mkdir -p "$RIME_CONFIG_DIR"
-echo "$(curl -o-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/default.custom.yaml)" > "$RIME_CONFIG_DIR/default.custom.yaml"
-echo "$(curl -o-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/double_pinyin_flypy.schema.yaml)" > "$RIME_CONFIG_DIR/double_pinyin_flypy.schema.yaml"
-echo "$(curl -o-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/ibus_rime.custom.yaml)" > "$RIME_CONFIG_DIR/ibus_rime.custom.yaml"
+echo "$(curl -fsSL https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/default.custom.yaml)" > "$RIME_CONFIG_DIR/default.custom.yaml"
+echo "$(curl -fsSL https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/double_pinyin_flypy.schema.yaml)" > "$RIME_CONFIG_DIR/double_pinyin_flypy.schema.yaml"
+echo "$(curl -fsSL https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/ibus_rime.custom.yaml)" > "$RIME_CONFIG_DIR/ibus_rime.custom.yaml"

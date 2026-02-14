@@ -44,18 +44,18 @@ sudo apt update
 sudo apt install -y curl wget
 
 # Install Oh My Zsh
-curl -o- https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s) | sh
+curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s) | sh
 
 # Install Java
 sudo apt install -y openjdk-21-jdk
 
 # Install nvm nodejs pnpm
-curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+curl -fsSL  https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
 nvm install --lts
 npm install -g pnpm
 
 # Install Rime
-curl -o- https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s) | sh
+curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s) | sh
 
 # Install CopyQ
 sudo apt install -y software-properties-common python-software-properties

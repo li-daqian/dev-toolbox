@@ -19,7 +19,7 @@ install_packages() {
         macos)
             if ! command_exists brew; then
                 echo "Homebrew is not installed. Installing Homebrew first..."
-                /bin/bash -c "$(curl -o-https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+                /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
             fi
             brew install zsh git curl wget
             ;;
@@ -56,7 +56,7 @@ install_packages
 
 # Install Oh My Zsh
 if command_exists curl; then
-  sh -c "$(curl -o-https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sed '/exec zsh -l/d')"
+  sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sed '/exec zsh -l/d')"
 else
   sh -c "$(wget -O- https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh | sed '/exec zsh -l/d')"
 fi
@@ -72,7 +72,7 @@ git clone https://github.com/zsh-users/zsh-syntax-highlighting.git ${ZSH_CUSTOM}
 git clone https://github.com/agkozak/zsh-z ${ZSH_CUSTOM}/plugins/zsh-z --depth=1
 
 # Download custom .zshrc
-echo "$(curl -o-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/.zshrc)" > ~/.zshrc
+echo "$(curl -fsSL https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/.zshrc)" > ~/.zshrc
 
 # Switch to zsh
 exec zsh -l
