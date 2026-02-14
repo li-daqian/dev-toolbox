@@ -70,7 +70,7 @@ fi
 # Install Oh My Zsh
 if ! command_exists zsh; then
     echo "Zsh is not installed. Installing Zsh ..."
-    curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s) | sh
+    curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s)" | sh
 fi
 
 # Install Java
@@ -79,12 +79,12 @@ sudo apt install -y openjdk-21-jdk
 # Install nvm nodejs pnpm by zsh
 if ! command_exists nvm; then
     echo "nvm is not installed. Installing nvm, nodejs and pnpm ..."
-    curl -fsSL  https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
+    curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh" | bash
     zsh -c "source ~/.zshrc && nvm install --lts && npm install -g pnpm"
 fi
 
 # Install Rime
-curl -fsSL  https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s) | sh
+curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s)" | sh
 
 # Install CopyQ
 sudo apt install -y software-properties-common
