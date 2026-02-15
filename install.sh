@@ -76,7 +76,17 @@ if ! command_exists zsh; then
 fi
 
 # Install Java
-sudo apt install -y openjdk-21-jdk
+if ! command_exists sdk; then
+    echo "SDKMAN is not installed. Installing SDKMAN and Java ..."
+    curl -fsSL "https://get.sdkman.io" | bash
+else
+    echo "SDKMAN is already installed. Skipping SDKMAN and Java installation."
+fi
+if ! command_exists java; then
+    zsh -c "source ~/.zshrc && sdk install java"
+else
+    echo "Java is already installed. Skipping Java installation."
+fi
 
 # Install nvm nodejs pnpm by zsh
 if ! command_exists nvm; then
