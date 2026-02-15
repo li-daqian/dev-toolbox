@@ -83,6 +83,8 @@ if ! command_exists nvm; then
     echo "nvm is not installed. Installing nvm, nodejs and pnpm ..."
     curl -fsSL "https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh" | bash
     zsh -c "source ~/.zshrc && nvm install --lts && npm install -g pnpm"
+    # bun
+    zsh -c "source ~/.zshrc && curl -fsSL https://bun.sh/install | bash"
 fi
 
 # Install Docker
