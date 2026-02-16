@@ -7,6 +7,31 @@ command_exists() {
   command -v "$@" >/dev/null 2>&1
 }
 
+add_custom_shortcut() {
+    local shortcut_id="$1"
+    local name="$2"
+    local command="$3"
+    local binding="$4"
+    
+    local shortcut_path="/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$shortcut_id/"
+    local current=$(gsettings get org.gnome.settings-daemon.plugins.media-keys custom-keybindings | sed "s/@as //")
+    
+    if echo "$current" | grep -q "$shortcut_path"; then
+        echo "$name shortcut already configured"
+    else
+        if [ "$current" = "[]" ]; then
+            new_list="['$shortcut_path']"
+        else
+            new_list=$(echo "$current" | sed "s|]$|, '$shortcut_path']|")
+        fi
+        gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "$new_list"
+    fi
+    
+    gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$shortcut_id/ name "$name"
+    gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$shortcut_id/ command "$command"
+    gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/$shortcut_id/ binding "$binding"
+}
+
 # Detect OS
 OS_TYPE="$(uname -s)"
 case "$OS_TYPE" in
@@ -132,16 +157,26 @@ fi
 # Install Rime
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s)" | sh
 
+# Install Albert
+if ! command_exists albert; then
+    echo "Albert is not installed. Installing Albert ..."
+    echo 'deb http://download.opensuse.org/repositories/home:/manuelschneid3r/xUbuntu_24.04/ /' | sudo tee /etc/apt/sources.list.d/home:manuelschneid3r.list
+    curl -fsSL https://download.opensuse.org/repositories/home:manuelschneid3r/xUbuntu_24.04/Release.key | gpg --dearmor | sudo tee /etc/apt/trusted.gpg.d/home_manuelschneid3r.gpg > /dev/null
+    sudo apt update
+    sudo apt install -y albert
+    # Add Custom Shortcuts ‘Alt+Space‘ for Albert
+    add_custom_shortcut "albert-show" "Show Albert" "albert toggle" "<Alt>space"
+else
+    echo "Albert is already installed. Skipping Albert installation."
+fi
+
 # Install CopyQ
 sudo apt install -y software-properties-common
 sudo add-apt-repository -y ppa:hluk/copyq
 sudo apt update
 sudo apt install -y copyq
-# Add Custom Shortcuts ‘Ctrl+Shift+V‘ for CopyQ
-gsettings set org.gnome.settings-daemon.plugins.media-keys custom-keybindings "['/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/']"
-gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/ name 'Show CopyQ'
-gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/ command 'copyq toggle'
-gsettings set org.gnome.settings-daemon.plugins.media-keys.custom-keybinding:/org/gnome/settings-daemon/plugins/media-keys/custom-keybindings/copyq-show/ binding '<Primary><Shift>V'
+# Add Custom Shortcuts Command+V‘ for CopyQ
+add_custom_shortcut "copyq-show" "Show CopyQ" "copyq toggle" "<Super>v"
 # Make CopyQ start on login
 copyq config autostart true
 # Make CopyQ tray_item_paste work, need make 'Wayland' to 'X11' in /etc/gdm3/custom.conf and reboot
