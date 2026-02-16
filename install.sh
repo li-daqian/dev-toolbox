@@ -97,6 +97,14 @@ if ! command_exists nvm; then
     zsh -c "source ~/.zshrc && curl -fsSL https://bun.sh/install | bash"
 fi
 
+# Install Rust
+if ! command_exists rustup; then
+    echo "Rust is not installed. Installing Rust ..."
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+else
+    echo "Rust is already installed. Skipping Rust installation."
+fi
+
 # Install Docker
 if ! command_exists docker; then
     echo "Docker is not installed. Installing Docker ..."
