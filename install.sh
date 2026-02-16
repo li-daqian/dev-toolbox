@@ -69,6 +69,22 @@ if ! fc-list | grep -q "Input Mono"; then
     fc-cache -f -v
 fi
 
+# Install btop
+if ! command_exists btop; then
+    echo "btop is not installed. Installing btop ..."
+    sudo apt install -y btop
+else
+    echo "btop is already installed. Skipping btop installation."
+fi
+
+# Install neofetch
+if ! command_exists neofetch; then
+    echo "Neofetch is not installed. Installing Neofetch ..."
+    sudo apt install -y neofetch
+else
+    echo "Neofetch is already installed. Skipping Neofetch installation."
+fi
+
 # Install Oh My Zsh
 if ! command_exists zsh; then
     echo "Zsh is not installed. Installing Zsh ..."
