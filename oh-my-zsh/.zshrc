@@ -21,5 +21,4 @@ source $ZSH/oh-my-zsh.sh
 
 # alias
 alias update="sudo apt update && sudo apt install --only-upgrade"
-alias update-code="update code"
 alias update-chrome="update google-chrome-stable"
