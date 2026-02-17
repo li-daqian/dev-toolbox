@@ -154,14 +154,6 @@ else
     echo "Docker is already installed. Skipping Docker installation."
 fi
 
-# Install vscode
-if ! command_exists code; then
-    echo "Visual Studio Code is not installed. Installing Visual Studio Code ..."
-    sudo snap install --classic code
-else
-    echo "Visual Studio Code is already installed. Skipping Visual Studio Code installation."
-fi
-
 # Install Rime
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/rime/install.sh?$(date +%s)" | sh
 
