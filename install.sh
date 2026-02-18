@@ -181,8 +181,6 @@ X-GNOME-Autostart-enabled=true
 Name=Albert
 Comment=Start Albert on login
 EOL
-    # Add Custom Shortcuts ‘Alt+Space‘ for Albert
-    add_custom_shortcut "albert-show" "Show Albert" "albert toggle" "<Alt>space"
 else
     echo "Albert is already installed. Skipping Albert installation."
 fi
