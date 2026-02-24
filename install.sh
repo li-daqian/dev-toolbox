@@ -82,6 +82,8 @@ gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark'
 gsettings set org.gnome.desktop.interface text-scaling-factor 1.2
 # Make Dock click action to minimize when app is focused
 gsettings set org.gnome.shell.extensions.dash-to-dock click-action 'minimize'
+# Make Dock icons centered
+gsettings set org.gnome.shell.extensions.dash-to-dock always-center-icons true
 # Enable System Monitor extension, only show CPU/Memory/Download in top bar
 gnome-extensions enable system-monitor@gnome-shell-extensions.gcampax.github.com
 gsettings set org.gnome.shell.extensions.system-monitor show-cpu true
