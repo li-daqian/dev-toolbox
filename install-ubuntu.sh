@@ -146,6 +146,13 @@ if ! command_exists java; then
 else
     echo "Java is already installed. Skipping Java installation."
 fi
+# Install maven
+if ! command_exists mvn; then
+    echo "Maven is not installed. Installing Maven ..."
+    zsh -c "source ~/.zshrc && sdk install maven"
+else
+    echo "Maven is already installed. Skipping Maven installation."
+fi
 
 # Install nvm nodejs pnpm by zsh
 if ! command_exists nvm; then
