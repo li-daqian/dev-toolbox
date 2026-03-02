@@ -86,6 +86,8 @@ gsettings set org.gnome.shell.extensions.dash-to-dock click-action 'minimize'
 gsettings set org.gnome.shell.extensions.dash-to-dock always-center-icons true
 # Make top bar show weekday
 gsettings set org.gnome.desktop.interface clock-show-weekday true
+# Make power mode
+sudo powerprofilesctl set performance
 # Make Dock max-icon-size to 38
 gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 38
 # Enable System Monitor extension, only show CPU/Memory/Download in top bar
