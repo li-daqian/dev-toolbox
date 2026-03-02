@@ -88,8 +88,6 @@ gsettings set org.gnome.shell.extensions.dash-to-dock always-center-icons true
 gsettings set org.gnome.desktop.interface clock-show-weekday true
 # Disable animations in GNOME settings
 gsettings set org.gnome.desktop.interface enable-animations false
-# Make power mode
-sudo powerprofilesctl set performance
 # Make Dock max-icon-size to 38
 gsettings set org.gnome.shell.extensions.dash-to-dock dash-max-icon-size 38
 # Enable System Monitor extension, only show CPU/Memory/Download in top bar
@@ -100,6 +98,9 @@ gsettings set org.gnome.shell.extensions.system-monitor show-download true
 gsettings set org.gnome.shell.extensions.system-monitor show-swap false
 gsettings set org.gnome.shell.extensions.system-monitor show-upload false
 
+# Make power mode
+sudo powerprofilesctl set performance
+sudo cpupower frequency-set -g performance
 # Config swapp
 sudo sysctl vm.swappiness=10
 echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
