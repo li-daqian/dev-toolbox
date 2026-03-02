@@ -100,6 +100,10 @@ gsettings set org.gnome.shell.extensions.system-monitor show-download true
 gsettings set org.gnome.shell.extensions.system-monitor show-swap false
 gsettings set org.gnome.shell.extensions.system-monitor show-upload false
 
+# Config swapp
+sudo sysctl vm.swappiness=10
+echo "vm.swappiness=10" | sudo tee -a /etc/sysctl.conf
+
 # Configure shortcuts
 # Make 'Super+Left/Right' to switch workspace
 gsettings set org.gnome.desktop.wm.keybindings switch-to-workspace-left "['<Control><Super>Left']"
