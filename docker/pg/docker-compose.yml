@@ -2,7 +2,7 @@ services:
   postgres:
     image: postgres:latest
     container_name: pg_local
-    restart: always
+    restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
