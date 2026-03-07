@@ -1,6 +1,6 @@
 services:
   mongodb:
-    image: mongo:latest
+    image: mongo:8
     container_name: mongo_local
     restart: unless-stopped
     environment:
