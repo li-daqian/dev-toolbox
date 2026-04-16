@@ -121,6 +121,14 @@ if ! fc-list | grep -q "Input Mono"; then
     fc-cache -f -v
 fi
 
+# Install xclip
+if ! command_exists xclip; then
+    echo "xclip is not installed. Installing xclip ..."
+    sudo apt install -y xclip
+else
+    echo "xclip is already installed. Skipping xclip installation."
+fi
+
 # Install btop
 if ! command_exists btop; then
     echo "btop is not installed. Installing btop ..."
