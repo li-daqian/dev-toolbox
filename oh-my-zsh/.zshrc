@@ -22,3 +22,13 @@ source $ZSH/oh-my-zsh.sh
 # alias
 alias update="sudo apt update && sudo apt install --only-upgrade"
 alias update-chrome="update google-chrome-stable"
+
+# Work around Codex creating an empty .codex file in WSL sandboxed projects.
+codex() {
+  if [ -f .codex ] && [ ! -s .codex ]; then
+    rm -f .codex
+  fi
+
+  mkdir -p .codex || return
+  command codex "$@"
+}
