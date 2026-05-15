@@ -233,6 +233,8 @@ add_custom_shortcut "copyq-show" "Show CopyQ" "copyq toggle" "<Super>v"
 copyq config autostart true
 # Make CopyQ tray_item_paste work, need make 'Wayland' to 'X11' in /etc/gdm3/custom.conf and reboot
 sudo sed -i 's/#WaylandEnable=false/WaylandEnable=false/g' /etc/gdm3/custom.conf 
+# Clean old systemd journal logs and keep only the last 7 days to save disk space
+sudo journalctl --vacuum-time=7d
 # ⚠️ Warn user about restart requirement
 # ⚠️ Make this end of the script
 echo ""
