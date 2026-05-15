@@ -3,7 +3,7 @@ Installation and configuration of personal developer tools.
 
 ## Installation (Only for ubuntu)
 ```bash
-curl -fsSL  "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/install-ubuntu.sh?$(date +%s)" | sh
+curl -fsSL  "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstrap-ubuntu.sh?$(date +%s)" | sh
 ```
 
 ## oh-my-zsh
