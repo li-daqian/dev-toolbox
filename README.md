@@ -1,9 +1,14 @@
 # dev-toolbox
 Installation and configuration of personal developer tools.
 
-## Installation (Only for ubuntu)
+## Installation (Ubuntu)
 ```bash
-curl -fsSL  "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstrap-ubuntu.sh?$(date +%s)" | sh
+curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstrap.sh?$(date +%s)" | sh
+```
+
+## Cleanup Disk (Ubuntu)
+```bash
+curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/cleanup-disk.sh?$(date +%s)" | sh
 ```
 
 ## oh-my-zsh

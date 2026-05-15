@@ -1,10 +1,8 @@
 #!/bin/sh
 set -eu
 
-DIR="$(cd "$(dirname "$0")" >/dev/null 2>&1 && pwd)"
-
 command_exists() {
-  command -v "$@" >/dev/null 2>&1
+  command -v "$1" >/dev/null 2>&1
 }
 
 # Install Docker
@@ -32,7 +30,7 @@ EOF
     # Add current user to docker group to avoid using 'sudo' for docker commands
     sudo groupadd docker || true
     sudo usermod -aG docker "$USER"
-    newgrp docker
+    echo "Run 'newgrp docker' or log out and back in to apply the docker group change."
 else
     echo "Docker is already installed. Skipping Docker installation."
 fi
