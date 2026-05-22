@@ -11,6 +11,16 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/cleanup-disk.sh?$(date +%s)" | sh
 ```
 
+## CPU Thermal Watch (Special Ubuntu Workaround)
+For specific Intel laptop cases where Linux is stuck at unusually low CPU package power and the bottleneck is traced to the `processor_thermal` platform thermal chain.
+
+```bash
+bash ubuntu/cpu-thermal-watch/install.sh
+```
+
+Details:
+- [ubuntu/cpu-thermal-watch/README.md](./ubuntu/cpu-thermal-watch/README.md)
+
 ## oh-my-zsh
 ```bash
 curl -fsSL  "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s)" | sh
