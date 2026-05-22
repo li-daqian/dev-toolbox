@@ -2,7 +2,8 @@
 set -euo pipefail
 
 RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main}"
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd)"
 
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -52,15 +53,23 @@ configure_git() {
   local git_email
 
   if ! git config --global user.name >/dev/null 2>&1; then
-    read -r -p "Enter your Git user name [Li Daqian]: " git_user_name
-    git_user_name="${git_user_name:-Li Daqian}"
-    git config --global user.name "$git_user_name"
+    if [[ -t 0 ]]; then
+      read -r -p "Enter your Git user name [Li Daqian]: " git_user_name
+      git_user_name="${git_user_name:-Li Daqian}"
+      git config --global user.name "$git_user_name"
+    else
+      echo "Git user.name is not configured and no interactive input is available. Skipping Git user name setup."
+    fi
   fi
 
   if ! git config --global user.email >/dev/null 2>&1; then
-    read -r -p "Enter your Git user email [hi@lidaqian.me]: " git_email
-    git_email="${git_email:-hi@lidaqian.me}"
-    git config --global user.email "$git_email"
+    if [[ -t 0 ]]; then
+      read -r -p "Enter your Git user email [hi@lidaqian.me]: " git_email
+      git_email="${git_email:-hi@lidaqian.me}"
+      git config --global user.email "$git_email"
+    else
+      echo "Git user.email is not configured and no interactive input is available. Skipping Git user email setup."
+    fi
   fi
 }
 
@@ -193,6 +202,6 @@ main() {
   cleanup_journal
 }
 
-if [[ "${BASH_SOURCE[0]}" == "$0" ]]; then
+if [[ "${BASH_SOURCE[0]:-$0}" == "$0" ]]; then
   main "$@"
 fi

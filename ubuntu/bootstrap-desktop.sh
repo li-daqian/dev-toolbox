@@ -2,7 +2,8 @@
 set -euo pipefail
 
 RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main}"
-SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
+SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd)"
 
 command_exists() {
   command -v "$1" >/dev/null 2>&1
@@ -265,6 +266,12 @@ prompt_restart_gdm() {
   local restart_confirm
 
   if [[ ! -f /etc/gdm3/custom.conf ]]; then
+    return
+  fi
+
+  if [[ ! -t 0 ]]; then
+    echo "Non-interactive session detected, skipping gdm3 restart prompt."
+    echo "Please restart your system later with: sudo systemctl restart gdm3"
     return
   fi
 
