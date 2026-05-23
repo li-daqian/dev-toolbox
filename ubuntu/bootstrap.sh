@@ -2,6 +2,10 @@
 set -euo pipefail
 
 RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main}"
+BTOP_MIN_VERSION="${BTOP_MIN_VERSION:-1.4.0}"
+BTOP_OFFICIAL_DEB_URL="${BTOP_OFFICIAL_DEB_URL:-https://archive.ubuntu.com/ubuntu/pool/universe/b/btop/btop_1.4.6-2_amd64.deb}"
+BTOP_RAPL_RULE_PATH="/etc/tmpfiles.d/99-btop-rapl.conf"
+BTOP_RAPL_FILE="/sys/class/powercap/intel-rapl:0/energy_uj"
 SCRIPT_SOURCE="${BASH_SOURCE[0]:-$0}"
 SCRIPT_DIR="$(cd -- "$(dirname -- "$SCRIPT_SOURCE")" && pwd)"
 
@@ -83,6 +87,89 @@ install_apt_command() {
   fi
 
   run_sudo apt-get install -y "$@"
+}
+
+dpkg_version_ge() {
+  dpkg --compare-versions "$1" ge "$2"
+}
+
+get_apt_candidate_version() {
+  apt-cache policy "$1" | awk '/Candidate:/ { print $2; exit }'
+}
+
+get_installed_package_version() {
+  dpkg-query -W -f='${Version}' "$1" 2>/dev/null || true
+}
+
+configure_btop_config() {
+  local config_dir="$HOME/.config/btop"
+  local config_file="$config_dir/btop.conf"
+
+  mkdir -p "$config_dir"
+
+  if [[ ! -f "$config_file" ]]; then
+    if ! command_exists btop; then
+      echo "btop is not installed, skipping btop config generation."
+      return
+    fi
+
+    btop --default-config >"$config_file"
+  fi
+
+  if grep -q '^show_cpu_watts = ' "$config_file"; then
+    sed -i 's/^show_cpu_watts = .*/show_cpu_watts = true/' "$config_file"
+  else
+    printf '%s\n' 'show_cpu_watts = true' >>"$config_file"
+  fi
+
+  if grep -q '^show_battery_watts = ' "$config_file"; then
+    sed -i 's/^show_battery_watts = .*/show_battery_watts = false/' "$config_file"
+  else
+    printf '%s\n' 'show_battery_watts = false' >>"$config_file"
+  fi
+}
+
+configure_btop_watts_support() {
+  configure_btop_config
+
+  if [[ ! -e "$BTOP_RAPL_FILE" ]]; then
+    echo "$BTOP_RAPL_FILE not found, skipping CPU wattage permission configuration."
+    return
+  fi
+
+  printf '%s\n' "z $BTOP_RAPL_FILE 0444 root root - -" | run_sudo tee "$BTOP_RAPL_RULE_PATH" >/dev/null
+  run_sudo systemd-tmpfiles --create "$BTOP_RAPL_RULE_PATH"
+}
+
+install_btop() {
+  local installed_version
+  local candidate_version
+  local tmp_deb
+
+  installed_version="$(get_installed_package_version btop)"
+  if [[ -n "$installed_version" ]] && dpkg_version_ge "$installed_version" "$BTOP_MIN_VERSION"; then
+    echo "btop $installed_version is already installed. Skipping package upgrade."
+    configure_btop_watts_support
+    return
+  fi
+
+  candidate_version="$(get_apt_candidate_version btop)"
+  if [[ -n "$candidate_version" ]] && [[ "$candidate_version" != "(none)" ]] && dpkg_version_ge "$candidate_version" "$BTOP_MIN_VERSION"; then
+    run_sudo apt-get install -y btop
+    configure_btop_watts_support
+    return
+  fi
+
+  if ! command_exists curl; then
+    echo "curl is required to download an official btop package."
+    exit 1
+  fi
+
+  tmp_deb="$(mktemp /tmp/btop.XXXXXX.deb)"
+  curl -fsSL "$BTOP_OFFICIAL_DEB_URL" -o "$tmp_deb"
+  run_sudo apt-get install -y "$tmp_deb"
+  rm -f "$tmp_deb"
+  configure_btop_watts_support
 }
 
 install_oh_my_zsh() {
@@ -188,7 +275,7 @@ main() {
 
   install_base_packages
   configure_git
-  install_apt_command btop btop
+  install_btop
   install_apt_command neofetch neofetch
   install_oh_my_zsh
   install_sdkman
