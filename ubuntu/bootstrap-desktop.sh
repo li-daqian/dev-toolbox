@@ -109,6 +109,24 @@ has_graphical_session() {
   [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" || -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]
 }
 
+google_chrome_command() {
+  if command_exists google-chrome; then
+    printf '%s\n' google-chrome
+    return
+  fi
+
+  if command_exists google-chrome-stable; then
+    printf '%s\n' google-chrome-stable
+    return
+  fi
+
+  return 1
+}
+
+has_google_chrome_profile() {
+  [[ -d "$HOME/.config/google-chrome/Default" ]]
+}
+
 set_gsetting() {
   local schema="$1"
   local key="$2"
@@ -261,7 +279,6 @@ install_albert() {
     application
     applications
     calculator_qalculate
-    chromium
     commandline
     datetime
     python
@@ -302,7 +319,11 @@ EOF
 
   mkdir -p "$albert_config_dir"
   set_ini_value "$albert_config_file" "widgetsboxmodel" "disable_input_method" "false"
-  set_ini_value "$albert_config_file" "chromium" "profile_path" "$HOME/.config/google-chrome/Default"
+
+  if google_chrome_command >/dev/null 2>&1 || has_google_chrome_profile; then
+    set_ini_value "$albert_config_file" "chromium" "profile_path" "$HOME/.config/google-chrome/Default"
+    set_ini_value "$albert_config_file" "chromium" "enabled" "true"
+  fi
 
   for plugin in "${enabled_plugins[@]}"; do
     set_ini_value "$albert_config_file" "$plugin" "enabled" "true"
