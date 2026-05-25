@@ -42,6 +42,69 @@ run_repo_script() {
   curl -fsSL "$RAW_BASE/$script_path?$(date +%s)" | "$runner"
 }
 
+set_ini_value() {
+  local file="$1"
+  local section="$2"
+  local key="$3"
+  local value="$4"
+  local tmp_file
+
+  mkdir -p "$(dirname "$file")"
+  touch "$file"
+  tmp_file="$(mktemp)"
+
+  awk -v section="$section" -v key="$key" -v value="$value" '
+    BEGIN {
+      in_section = 0
+      section_found = 0
+      key_written = 0
+    }
+
+    /^\[/ {
+      if (in_section && !key_written) {
+        print key "=" value
+        key_written = 1
+      }
+
+      in_section = ($0 == "[" section "]")
+      if (in_section) {
+        section_found = 1
+      }
+
+      print
+      next
+    }
+
+    {
+      if (in_section && index($0, key "=") == 1) {
+        if (!key_written) {
+          print key "=" value
+          key_written = 1
+        }
+        next
+      }
+
+      print
+    }
+
+    END {
+      if (in_section && !key_written) {
+        print key "=" value
+      }
+
+      if (!section_found) {
+        if (NR > 0) {
+          print ""
+        }
+        print "[" section "]"
+        print key "=" value
+      }
+    }
+  ' "$file" > "$tmp_file"
+
+  mv "$tmp_file" "$file"
+}
+
 has_graphical_session() {
   [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" || -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]
 }
@@ -192,6 +255,21 @@ install_albert() {
   local albert_key="/etc/apt/trusted.gpg.d/home_manuelschneid3r.gpg"
   local autostart_dir="$HOME/.config/autostart"
   local autostart_file="$autostart_dir/albert.desktop"
+  local albert_config_dir="$HOME/.config/albert"
+  local albert_config_file="$albert_config_dir/config"
+  local -a enabled_plugins=(
+    application
+    applications
+    calculator_qalculate
+    chromium
+    commandline
+    datetime
+    python
+    python.emoji
+    python.vscode_projects
+    websearch
+  )
+  local plugin
 
   if ! command_exists albert; then
     echo "Albert is not installed. Installing Albert ..."
@@ -221,6 +299,14 @@ X-GNOME-Autostart-enabled=true
 Name=Albert
 Comment=Start Albert on login
 EOF
+
+  mkdir -p "$albert_config_dir"
+  set_ini_value "$albert_config_file" "widgetsboxmodel" "disable_input_method" "false"
+  set_ini_value "$albert_config_file" "chromium" "profile_path" "$HOME/.config/google-chrome/Default"
+
+  for plugin in "${enabled_plugins[@]}"; do
+    set_ini_value "$albert_config_file" "$plugin" "enabled" "true"
+  done
 }
 
 install_copyq() {
