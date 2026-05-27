@@ -182,7 +182,7 @@ configure_gnome_ui() {
   set_gsetting org.gnome.shell.extensions.dash-to-dock always-center-icons "true"
   set_gsetting org.gnome.desktop.interface clock-show-weekday "true"
   set_gsetting org.gnome.desktop.interface enable-animations "false"
-  set_gsetting org.gnome.shell.extensions.dash-to-dock dash-max-icon-size "38"
+  set_gsetting org.gnome.shell.extensions.dash-to-dock dash-max-icon-size "30"
   set_gsetting org.gnome.desktop.wm.keybindings switch-to-workspace-left "['<Control><Super>Left']"
   set_gsetting org.gnome.desktop.wm.keybindings switch-to-workspace-right "['<Control><Super>Right']"
 }
