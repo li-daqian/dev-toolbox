@@ -254,6 +254,10 @@ install_docker() {
   run_repo_script "docker/install-ubuntu.sh" sh
 }
 
+install_github_cli() {
+  run_repo_script "ubuntu/install-gh.sh" bash
+}
+
 cleanup_journal() {
   if ! command_exists journalctl; then
     echo "journalctl not found, skipping log cleanup."
@@ -275,6 +279,7 @@ main() {
 
   install_base_packages
   configure_git
+  install_github_cli
   install_btop
   install_apt_command neofetch neofetch
   install_oh_my_zsh

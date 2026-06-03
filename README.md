@@ -11,6 +11,11 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/cleanup-disk.sh?$(date +%s)" | sh
 ```
 
+## GitHub CLI (gh, Ubuntu)
+```bash
+curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/install-gh.sh?$(date +%s)" | bash
+```
+
 ## CPU Thermal Watch (Special Ubuntu Workaround)
 For specific Intel laptop cases where Linux is stuck at unusually low CPU package power and the bottleneck is traced to the `processor_thermal` platform thermal chain.
 
