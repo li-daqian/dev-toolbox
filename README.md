@@ -26,6 +26,16 @@ bash ubuntu/cpu-thermal-watch/install.sh
 Details:
 - [ubuntu/cpu-thermal-watch/README.md](./ubuntu/cpu-thermal-watch/README.md)
 
+## GNOME Screenshot Clipboard (Ubuntu)
+Bind `Print Screen` to copy a selected screenshot directly to the clipboard instead of saving it to `Pictures/Screenshots`.
+
+```bash
+bash ubuntu/gnome-screenshot-clipboard/install.sh install
+```
+
+Details:
+- [ubuntu/gnome-screenshot-clipboard/README.md](./ubuntu/gnome-screenshot-clipboard/README.md)
+
 ## oh-my-zsh
 ```bash
 curl -fsSL  "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/oh-my-zsh/install.sh?$(date +%s)" | sh
