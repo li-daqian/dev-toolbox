@@ -42,89 +42,8 @@ run_repo_script() {
   curl -fsSL "$RAW_BASE/$script_path?$(date +%s)" | "$runner"
 }
 
-set_ini_value() {
-  local file="$1"
-  local section="$2"
-  local key="$3"
-  local value="$4"
-  local tmp_file
-
-  mkdir -p "$(dirname "$file")"
-  touch "$file"
-  tmp_file="$(mktemp)"
-
-  awk -v section="$section" -v key="$key" -v value="$value" '
-    BEGIN {
-      in_section = 0
-      section_found = 0
-      key_written = 0
-    }
-
-    /^\[/ {
-      if (in_section && !key_written) {
-        print key "=" value
-        key_written = 1
-      }
-
-      in_section = ($0 == "[" section "]")
-      if (in_section) {
-        section_found = 1
-      }
-
-      print
-      next
-    }
-
-    {
-      if (in_section && index($0, key "=") == 1) {
-        if (!key_written) {
-          print key "=" value
-          key_written = 1
-        }
-        next
-      }
-
-      print
-    }
-
-    END {
-      if (in_section && !key_written) {
-        print key "=" value
-      }
-
-      if (!section_found) {
-        if (NR > 0) {
-          print ""
-        }
-        print "[" section "]"
-        print key "=" value
-      }
-    }
-  ' "$file" > "$tmp_file"
-
-  mv "$tmp_file" "$file"
-}
-
 has_graphical_session() {
   [[ -n "${DISPLAY:-}" || -n "${WAYLAND_DISPLAY:-}" || -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]]
-}
-
-google_chrome_command() {
-  if command_exists google-chrome; then
-    printf '%s\n' google-chrome
-    return
-  fi
-
-  if command_exists google-chrome-stable; then
-    printf '%s\n' google-chrome-stable
-    return
-  fi
-
-  return 1
-}
-
-has_google_chrome_profile() {
-  [[ -d "$HOME/.config/google-chrome/Default" ]]
 }
 
 set_gsetting() {
@@ -268,68 +187,6 @@ install_rime() {
   run_repo_script "rime/install.sh" sh
 }
 
-install_albert() {
-  local albert_list="/etc/apt/sources.list.d/home:manuelschneid3r.list"
-  local albert_key="/etc/apt/trusted.gpg.d/home_manuelschneid3r.gpg"
-  local autostart_dir="$HOME/.config/autostart"
-  local autostart_file="$autostart_dir/albert.desktop"
-  local albert_config_dir="$HOME/.config/albert"
-  local albert_config_file="$albert_config_dir/config"
-  local -a enabled_plugins=(
-    application
-    applications
-    calculator_qalculate
-    commandline
-    datetime
-    python
-    python.emoji
-    python.vscode_projects
-    websearch
-  )
-  local plugin
-
-  if ! command_exists albert; then
-    echo "Albert is not installed. Installing Albert ..."
-
-    if [[ ! -f "$albert_list" ]]; then
-      printf '%s\n' 'deb http://download.opensuse.org/repositories/home:/manuelschneid3r/xUbuntu_24.04/ /' | sudo tee "$albert_list" >/dev/null
-    fi
-
-    if [[ ! -f "$albert_key" ]]; then
-      curl -fsSL https://download.opensuse.org/repositories/home:manuelschneid3r/xUbuntu_24.04/Release.key | gpg --dearmor | sudo tee "$albert_key" >/dev/null
-    fi
-
-    run_sudo apt-get update
-    run_sudo apt-get install -y albert
-  else
-    echo "Albert is already installed. Skipping Albert installation."
-  fi
-
-  mkdir -p "$autostart_dir"
-  cat > "$autostart_file" <<'EOF'
-[Desktop Entry]
-Type=Application
-Exec=albert
-Hidden=false
-NoDisplay=false
-X-GNOME-Autostart-enabled=true
-Name=Albert
-Comment=Start Albert on login
-EOF
-
-  mkdir -p "$albert_config_dir"
-  set_ini_value "$albert_config_file" "widgetsboxmodel" "disable_input_method" "false"
-
-  if google_chrome_command >/dev/null 2>&1 || has_google_chrome_profile; then
-    set_ini_value "$albert_config_file" "chromium" "profile_path" "$HOME/.config/google-chrome/Default"
-    set_ini_value "$albert_config_file" "chromium" "enabled" "true"
-  fi
-
-  for plugin in "${enabled_plugins[@]}"; do
-    set_ini_value "$albert_config_file" "$plugin" "enabled" "true"
-  done
-}
-
 install_copyq() {
   if ! command_exists copyq; then
     echo "CopyQ is not installed. Installing CopyQ ..."
@@ -411,7 +268,6 @@ main() {
   configure_swappiness
   install_input_mono
   install_rime
-  install_albert
   install_copyq
   configure_gdm_for_copyq
   prompt_restart_gdm
