@@ -187,6 +187,10 @@ install_rime() {
   run_repo_script "rime/install.sh" sh
 }
 
+install_albert() {
+  run_repo_script "ubuntu/install-albert.sh" bash
+}
+
 install_copyq() {
   if ! command_exists copyq; then
     echo "CopyQ is not installed. Installing CopyQ ..."
@@ -268,6 +272,7 @@ main() {
   configure_swappiness
   install_input_mono
   install_rime
+  install_albert
   install_copyq
   configure_gdm_for_copyq
   prompt_restart_gdm

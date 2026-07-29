@@ -29,6 +29,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 | 容器工具 | `docker-ce`、`docker-ce-cli`、`containerd.io`、`docker-buildx-plugin`、`docker-compose-plugin` | 配置 Docker 官方 APT 源后安装 Docker Engine、CLI、containerd、Buildx 和 Compose |
 | X11 剪贴板 | xclip | 通过 Ubuntu APT 安装 |
 | 剪贴板管理器 | CopyQ | 配置 CopyQ PPA 后安装，设置为开机启动，并绑定 <kbd>Super</kbd>+<kbd>V</kbd> 显示或隐藏主界面 |
+| 应用启动器 | Albert、xdotool | 配置 Albert 官方推荐的 openSUSE Build Service APT 源后安装；设置为开机启动，将全局快捷键设为 <kbd>Alt</kbd>+<kbd>Space</kbd>，并默认启用应用、计算器、命令行、日期时间、Emoji、VS Code Projects 和网页搜索等插件；xdotool 为 X11 桌面提供结果粘贴能力 |
 | 输入法 | `ibus-rime`、`rime-data-double-pinyin` | 使用 IBus 输入法框架和 Rime（中州韵）引擎；只启用小鹤双拼方案，中文模式默认输出简体字，候选词横向排列 |
 | 编程字体 | Input Mono | 从 Input 官网下载完整字体包，将 `InputMono-*.ttf` 安装到当前用户的字体目录 |
 
@@ -55,6 +56,14 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/install-gh.sh?$(date +%s)" | bash
+```
+
+## Albert Launcher (Ubuntu 24.04)
+
+安装 Albert 和用于 X11 粘贴的 xdotool，设置 Albert 登录时自动启动，将全局快捷键设为 <kbd>Alt</kbd>+<kbd>Space</kbd>，并写入常用插件的默认启用配置。
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/install-albert.sh?$(date +%s)" | bash
 ```
 
 ## Playwright MCP for Codex and Claude Code
