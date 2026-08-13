@@ -267,10 +267,6 @@ cleanup_journal() {
   run_sudo journalctl --vacuum-time=7d
 }
 
-install_global_agent_charter() {
-  run_repo_script "scripts/install-global-agent-charter.sh" bash --apply
-}
-
 main() {
   if ! command_exists apt-get; then
     echo "This script requires apt-get."
@@ -290,7 +286,6 @@ main() {
   install_rust
   install_docker
   run_repo_script "ubuntu/bootstrap-desktop.sh" bash
-  install_global_agent_charter
   cleanup_journal
 }
 
