@@ -51,7 +51,8 @@ cleanup_docker() {
     return
   fi
 
-  run_sudo docker system prune -a --volumes -f
+  # Volumes may contain durable application data, so never prune them here.
+  run_sudo docker system prune -a -f
 }
 
 cleanup_snap() {

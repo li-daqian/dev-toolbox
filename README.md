@@ -48,6 +48,8 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 
 ## Cleanup Disk (Ubuntu)
 
+清理 APT 缓存、未使用的 Docker 容器/镜像/网络、旧 Snap revision、systemd journal 和 crash reports。Docker volumes 会始终保留。
+
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/cleanup-disk.sh?$(date +%s)" | sh
 ```
