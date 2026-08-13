@@ -33,7 +33,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 | 输入法 | `ibus-rime`、`rime-data-double-pinyin` | 使用 IBus 输入法框架和 Rime（中州韵）引擎；只启用小鹤双拼方案，中文模式默认输出简体字，候选词横向排列 |
 | 编程字体 | Input Mono | 从 Input 官网下载完整字体包，将 `InputMono-*.ttf` 安装到当前用户的字体目录 |
 
-主脚本会跳过大部分已安装的软件，因此可以重复执行；具体是否跳过以各子脚本的检测结果为准。
+除软件外，主脚本还会安装 Codex 与 Claude Code 的全局 Agent 工作约定文件。脚本会跳过大部分已安装的软件，因此可以重复执行；具体是否跳过以各子脚本的检测结果为准。
 
 ### 系统与桌面配置
 
@@ -44,7 +44,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 - 将 `vm.swappiness` 设置为 `10`，并写入 `/etc/sysctl.conf`。
 - 为兼容 CopyQ，存在 `/etc/gdm3/custom.conf` 时会禁用 Wayland，并提示是否重启 GDM。重启 GDM 会立即退出当前桌面会话。
 - Docker 用户组变更需要重新登录，或执行 `newgrp docker` 后生效。
-- 清理超过 7 天的现有 systemd journal 日志。
+- 安装 Codex 与 Claude Code 的全局 Agent 工作约定，并清理超过 7 天的现有 systemd journal 日志。
 
 ## Cleanup Disk (Ubuntu)
 
@@ -70,14 +70,6 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 
 ```bash
 ./scripts/install-playwright-mcp.sh
-```
-
-## Global Agent Working Agreements
-
-全局 Agent 工作约定不再由 Ubuntu 主脚本自动安装。默认同时安装到 Codex 与 Claude Code；如需只安装其中一个，使用 `--target codex` 或 `--target claude`。
-
-```bash
-./scripts/install-global-agent-charter.sh --apply
 ```
 
 ## CPU Thermal Watch (Special Ubuntu Workaround)
