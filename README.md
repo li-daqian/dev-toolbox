@@ -74,6 +74,41 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 ./scripts/install-playwright-mcp.sh
 ```
 
+## Matt Pocock Skills for Codex
+
+The installer keeps an unmodified checkout of
+[`mattpocock/skills`](https://github.com/mattpocock/skills) and exposes skills to
+Codex through symlinks. Re-running a command updates the checkout, so local
+patches do not need to be maintained.
+
+Install the five curated work skills in the Codex user scope:
+
+```bash
+./scripts/install-matt-pocock-skills.sh work
+```
+
+The work profile installs `grilling`, `grill-me`, `diagnosing-bugs`,
+`domain-modeling`, and `grill-with-docs` into `~/.agents/skills`.
+
+For a personal Git project, make the complete stable upstream set available in
+that project:
+
+```bash
+./scripts/install-matt-pocock-skills.sh personal --project ~/Code/my-project
+```
+
+The personal profile includes skills under the upstream `engineering`,
+`productivity`, and `misc` groups, while excluding `in-progress` and
+`deprecated`. Skills already present in the user scope are reused instead of
+being installed a second time, which avoids duplicate names in Codex's skill
+selector.
+
+Run the isolated installer tests with:
+
+```bash
+./scripts/test-install-matt-pocock-skills.sh
+```
+
 ## CPU Thermal Watch (Special Ubuntu Workaround)
 
 For specific Intel laptop cases where Linux is stuck at unusually low CPU package power and the bottleneck is traced to the `processor_thermal` platform thermal chain.
