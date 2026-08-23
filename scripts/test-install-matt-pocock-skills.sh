@@ -7,6 +7,10 @@ TEST_ROOT="$(mktemp -d)"
 SOURCE_DIR="${TEST_ROOT}/source"
 USER_SKILLS_DIR="${TEST_ROOT}/user-skills"
 PROJECT_DIR="${TEST_ROOT}/personal-project"
+FAKE_BIN="${TEST_ROOT}/bin"
+SYSTEMCTL_LOG="${TEST_ROOT}/systemctl.log"
+SYSTEMD_USER_DIR="${TEST_ROOT}/systemd-user"
+AUTO_UPDATE_STATE_DIR="${TEST_ROOT}/auto-update-state"
 
 cleanup() {
   rm -rf "$TEST_ROOT"
@@ -39,6 +43,15 @@ assert_symlink_to() {
 
 assert_absent() {
   [[ ! -e "$1" && ! -L "$1" ]] || fail "expected path to be absent: $1"
+}
+
+assert_file_contains() {
+  local file_path="$1"
+  local expected="$2"
+
+  [[ -f "$file_path" ]] || fail "expected file: ${file_path}"
+  [[ "$(<"$file_path")" == *"$expected"* ]] ||
+    fail "expected ${file_path} to contain: ${expected}"
 }
 
 for relative_path in \
@@ -74,6 +87,41 @@ assert_absent "$USER_SKILLS_DIR/tdd"
 
 # Re-running the work profile must be idempotent.
 "$INSTALLER" work --source-dir "$SOURCE_DIR" --user-skills-dir "$USER_SKILLS_DIR" >/dev/null
+
+# Automatic updates must install valid user units and manage them with systemctl.
+mkdir -p "$FAKE_BIN"
+printf '%s\n' \
+  '#!/usr/bin/env bash' \
+  'printf "%s\n" "$*" >> "${SYSTEMCTL_LOG:?}"' \
+  > "$FAKE_BIN/systemctl"
+chmod +x "$FAKE_BIN/systemctl"
+
+PATH="${FAKE_BIN}:${PATH}" SYSTEMCTL_LOG="$SYSTEMCTL_LOG" \
+  "$INSTALLER" auto-update enable \
+    --calendar 'Tue *-*-* 10:30:00' \
+    --source-root "$SOURCE_DIR" \
+    --user-skills-dir "$USER_SKILLS_DIR" \
+    --systemd-user-dir "$SYSTEMD_USER_DIR" \
+    --state-dir "$AUTO_UPDATE_STATE_DIR" \
+    >/dev/null
+
+SERVICE_PATH="${SYSTEMD_USER_DIR}/codex-matt-pocock-skills-update.service"
+TIMER_PATH="${SYSTEMD_USER_DIR}/codex-matt-pocock-skills-update.timer"
+assert_file_contains "$SERVICE_PATH" "ExecStart=\"${INSTALLER}\" work"
+assert_file_contains "$SERVICE_PATH" "--source-root \"${SOURCE_DIR}\""
+assert_file_contains "$SERVICE_PATH" "StandardOutput=append:${AUTO_UPDATE_STATE_DIR}/update.log"
+assert_file_contains "$TIMER_PATH" 'OnCalendar=Tue *-*-* 10:30:00'
+assert_file_contains "$SYSTEMCTL_LOG" '--user start codex-matt-pocock-skills-update.service'
+assert_file_contains "$SYSTEMCTL_LOG" '--user enable --now codex-matt-pocock-skills-update.timer'
+
+PATH="${FAKE_BIN}:${PATH}" SYSTEMCTL_LOG="$SYSTEMCTL_LOG" \
+  "$INSTALLER" auto-update disable \
+    --systemd-user-dir "$SYSTEMD_USER_DIR" \
+    --state-dir "$AUTO_UPDATE_STATE_DIR" \
+    >/dev/null
+assert_absent "$SERVICE_PATH"
+assert_absent "$TIMER_PATH"
+assert_file_contains "$SYSTEMCTL_LOG" '--user disable --now codex-matt-pocock-skills-update.timer'
 
 mkdir -p "$PROJECT_DIR"
 git -C "$PROJECT_DIR" init -q
@@ -115,4 +163,4 @@ if "$INSTALLER" personal \
   fail "expected a broken user-scope skill link to fail"
 fi
 
-printf 'PASS: install-matt-pocock-skills profiles, idempotency, and collision safety\n'
+printf 'PASS: install-matt-pocock-skills profiles, auto-update, idempotency, and collision safety\n'

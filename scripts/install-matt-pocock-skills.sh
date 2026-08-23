@@ -4,10 +4,19 @@ set -euo pipefail
 UPSTREAM_REPO="https://github.com/mattpocock/skills.git"
 UPSTREAM_REF="main"
 PROFILE=""
+AUTO_UPDATE_ACTION=""
+AUTO_UPDATE_CALENDAR="Mon *-*-* 09:00:00"
 PROJECT_DIR="${PWD}"
 USER_SKILLS_DIR="${HOME}/.agents/skills"
 MANAGED_SOURCE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/codex-skill-sources/mattpocock-skills"
+SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/systemd/user"
+AUTO_UPDATE_STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/codex-skill-updater"
 SOURCE_DIR=""
+
+AUTO_UPDATE_SERVICE="codex-matt-pocock-skills-update.service"
+AUTO_UPDATE_TIMER="codex-matt-pocock-skills-update.timer"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_PATH="${SCRIPT_DIR}/$(basename "${BASH_SOURCE[0]}")"
 
 WORK_SKILL_PATHS=(
   "skills/productivity/grilling"
@@ -22,11 +31,16 @@ usage() {
 Usage:
   ./scripts/install-matt-pocock-skills.sh work [options]
   ./scripts/install-matt-pocock-skills.sh personal [options]
+  ./scripts/install-matt-pocock-skills.sh auto-update enable [options]
+  ./scripts/install-matt-pocock-skills.sh auto-update disable [options]
+  ./scripts/install-matt-pocock-skills.sh auto-update status [options]
 
 Profiles:
   work       Install five curated skills into the Codex user scope.
   personal   Make the complete stable upstream set available in one Git project.
              Existing user-scope skills are reused instead of duplicated.
+  auto-update
+             Manage a systemd user timer that refreshes the work profile.
 
 Options:
   --project <path>          Personal project path. Default: current directory
@@ -35,12 +49,20 @@ Options:
   --source-root <path>      Managed upstream clone. Default:
                             ~/.local/share/codex-skill-sources/mattpocock-skills
   --source-dir <path>       Use an existing checkout without fetching it
+  --calendar <expression>   systemd calendar for automatic updates. Default:
+                            Mon *-*-* 09:00:00
+  --systemd-user-dir <path> systemd user unit directory. Default:
+                            ~/.config/systemd/user
+  --state-dir <path>        Automatic-update log directory. Default:
+                            ~/.local/state/codex-skill-updater
   --help                    Show this help
 
 Examples:
   ./scripts/install-matt-pocock-skills.sh work
   ./scripts/install-matt-pocock-skills.sh personal --project ~/Code/my-project
   ./scripts/install-matt-pocock-skills.sh work --ref v1.0.0
+  ./scripts/install-matt-pocock-skills.sh auto-update enable
+  ./scripts/install-matt-pocock-skills.sh auto-update status
 
 Re-run the same command to fetch the selected ref and update every managed skill.
 The upstream skill directories are never edited; Codex follows symlinks to them.
@@ -58,6 +80,120 @@ fail() {
 
 require_command() {
   command -v "$1" >/dev/null 2>&1 || fail "$1 is required."
+}
+
+unit_quote() {
+  local value="$1"
+
+  value="${value//%/%%}"
+  value="${value//\\/\\\\}"
+  value="${value//\"/\\\"}"
+  printf '"%s"' "$value"
+}
+
+write_auto_update_units() {
+  local service_path="${SYSTEMD_USER_DIR}/${AUTO_UPDATE_SERVICE}"
+  local timer_path="${SYSTEMD_USER_DIR}/${AUTO_UPDATE_TIMER}"
+  local update_log="${AUTO_UPDATE_STATE_DIR}/update.log"
+
+  require_command systemd-analyze
+  systemd-analyze calendar "$AUTO_UPDATE_CALENDAR" >/dev/null
+
+  mkdir -p "$SYSTEMD_USER_DIR" "$AUTO_UPDATE_STATE_DIR"
+
+  {
+    printf '%s\n' \
+      '[Unit]' \
+      'Description=Update Matt Pocock skills for Codex' \
+      'Wants=network-online.target' \
+      'After=network-online.target' \
+      '' \
+      '[Service]' \
+      'Type=oneshot'
+    printf 'ExecStart=%s work --ref %s --user-skills-dir %s --source-root %s\n' \
+      "$(unit_quote "$SCRIPT_PATH")" \
+      "$(unit_quote "$UPSTREAM_REF")" \
+      "$(unit_quote "$USER_SKILLS_DIR")" \
+      "$(unit_quote "$MANAGED_SOURCE_DIR")"
+    printf '%s\n' \
+      'Environment=GIT_TERMINAL_PROMPT=0' \
+      'TimeoutStartSec=15min' \
+      'UMask=0077'
+    printf 'StandardOutput=append:%s\n' "$update_log"
+    printf 'StandardError=append:%s\n' "$update_log"
+  } > "$service_path"
+
+  {
+    printf '%s\n' \
+      '[Unit]' \
+      'Description=Weekly update for Matt Pocock Codex skills' \
+      '' \
+      '[Timer]'
+    printf 'OnCalendar=%s\n' "$AUTO_UPDATE_CALENDAR"
+    printf '%s\n' \
+      'Persistent=true' \
+      "Unit=${AUTO_UPDATE_SERVICE}" \
+      '' \
+      '[Install]' \
+      'WantedBy=timers.target'
+  } > "$timer_path"
+
+  systemd-analyze verify "$service_path" "$timer_path" >/dev/null
+}
+
+enable_auto_update() {
+  require_command systemctl
+  write_auto_update_units
+  systemctl --user daemon-reload
+
+  log 'Running an immediate update before enabling the timer.'
+  systemctl --user start "$AUTO_UPDATE_SERVICE"
+  systemctl --user enable --now "$AUTO_UPDATE_TIMER"
+
+  log "Automatic updates enabled: ${AUTO_UPDATE_CALENDAR}"
+  log "Timer: ${AUTO_UPDATE_TIMER}"
+  log "Log: ${AUTO_UPDATE_STATE_DIR}/update.log"
+  systemctl --user list-timers --all "$AUTO_UPDATE_TIMER" --no-pager
+}
+
+disable_auto_update() {
+  local service_path="${SYSTEMD_USER_DIR}/${AUTO_UPDATE_SERVICE}"
+  local timer_path="${SYSTEMD_USER_DIR}/${AUTO_UPDATE_TIMER}"
+
+  require_command systemctl
+  systemctl --user disable --now "$AUTO_UPDATE_TIMER" >/dev/null 2>&1 || true
+  systemctl --user stop "$AUTO_UPDATE_SERVICE" >/dev/null 2>&1 || true
+
+  [[ ! -e "$service_path" ]] || unlink "$service_path"
+  [[ ! -e "$timer_path" ]] || unlink "$timer_path"
+
+  systemctl --user daemon-reload
+  systemctl --user reset-failed "$AUTO_UPDATE_SERVICE" "$AUTO_UPDATE_TIMER" \
+    >/dev/null 2>&1 || true
+  log 'Automatic updates disabled.'
+}
+
+show_auto_update_status() {
+  require_command systemctl
+  systemctl --user status "$AUTO_UPDATE_TIMER" --no-pager
+  systemctl --user list-timers --all "$AUTO_UPDATE_TIMER" --no-pager
+}
+
+manage_auto_update() {
+  case "$AUTO_UPDATE_ACTION" in
+    enable)
+      enable_auto_update
+      ;;
+    disable)
+      disable_auto_update
+      ;;
+    status)
+      show_auto_update_status
+      ;;
+    *)
+      fail 'auto-update action must be one of: enable, disable, status'
+      ;;
+  esac
 }
 
 canonical_dir() {
@@ -247,6 +383,12 @@ fi
 PROFILE="$1"
 shift
 
+if [[ "$PROFILE" == "auto-update" ]]; then
+  [[ $# -gt 0 ]] || fail 'auto-update requires an action: enable, disable, or status'
+  AUTO_UPDATE_ACTION="$1"
+  shift
+fi
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --project)
@@ -274,6 +416,21 @@ while [[ $# -gt 0 ]]; do
       SOURCE_DIR="$2"
       shift 2
       ;;
+    --calendar)
+      [[ $# -ge 2 ]] || fail "--calendar requires a value"
+      AUTO_UPDATE_CALENDAR="$2"
+      shift 2
+      ;;
+    --systemd-user-dir)
+      [[ $# -ge 2 ]] || fail "--systemd-user-dir requires a value"
+      SYSTEMD_USER_DIR="$2"
+      shift 2
+      ;;
+    --state-dir)
+      [[ $# -ge 2 ]] || fail "--state-dir requires a value"
+      AUTO_UPDATE_STATE_DIR="$2"
+      shift 2
+      ;;
     --help|-h)
       usage
       exit 0
@@ -285,12 +442,17 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$PROFILE" in
-  work|personal)
+  work|personal|auto-update)
     ;;
   *)
-    fail "profile must be one of: work, personal"
+    fail "profile must be one of: work, personal, auto-update"
     ;;
 esac
+
+if [[ "$PROFILE" == "auto-update" ]]; then
+  manage_auto_update
+  exit 0
+fi
 
 prepare_source
 

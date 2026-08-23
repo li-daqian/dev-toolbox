@@ -103,6 +103,27 @@ The personal profile includes skills under the upstream `engineering`,
 being installed a second time, which avoids duplicate names in Codex's skill
 selector.
 
+Enable a weekly user-level systemd timer that updates the five work skills on
+Monday at 09:00:
+
+```bash
+./scripts/install-matt-pocock-skills.sh auto-update enable
+```
+
+Enabling the timer runs one immediate update before scheduling future runs.
+Inspect or disable it with:
+
+```bash
+./scripts/install-matt-pocock-skills.sh auto-update status
+./scripts/install-matt-pocock-skills.sh auto-update disable
+```
+
+The updater writes combined output to
+`~/.local/state/codex-skill-updater/update.log`. Use `--calendar` to choose a
+different systemd calendar expression. The generated service keeps using the
+installer's absolute path, so re-enable automatic updates if the repository is
+moved.
+
 Run the isolated installer tests with:
 
 ```bash
