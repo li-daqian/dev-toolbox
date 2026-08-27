@@ -1,0 +1,4 @@
+# Work profile intentionally excludes domain-modeling and grill-with-docs.
+skills/engineering/diagnosing-bugs
+skills/productivity/grill-me
+skills/productivity/grilling

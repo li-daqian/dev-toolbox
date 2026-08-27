@@ -1,0 +1,39 @@
+name: Test Agent setup installer
+
+on:
+  push:
+    paths:
+      - "agent/**"
+      - "scripts/install-agent-setup.sh"
+      - "scripts/install-global-agent-charter.sh"
+      - "scripts/install-matt-pocock-skills.sh"
+      - "scripts/lib/agent-setup/**"
+      - "scripts/test-install-agent-setup.sh"
+      - ".github/workflows/test-agent-setup.yml"
+  pull_request:
+    paths:
+      - "agent/**"
+      - "scripts/install-agent-setup.sh"
+      - "scripts/install-global-agent-charter.sh"
+      - "scripts/install-matt-pocock-skills.sh"
+      - "scripts/lib/agent-setup/**"
+      - "scripts/test-install-agent-setup.sh"
+      - ".github/workflows/test-agent-setup.yml"
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / Bash
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run isolated installer tests
+        shell: bash
+        run: bash scripts/test-install-agent-setup.sh

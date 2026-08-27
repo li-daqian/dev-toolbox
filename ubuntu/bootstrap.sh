@@ -2,6 +2,7 @@
 set -euo pipefail
 
 RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main}"
+AGENT_SETUP_PROFILE="${AGENT_SETUP_PROFILE:-personal}"
 BTOP_MIN_VERSION="${BTOP_MIN_VERSION:-1.4.0}"
 BTOP_OFFICIAL_DEB_URL="${BTOP_OFFICIAL_DEB_URL:-https://archive.ubuntu.com/ubuntu/pool/universe/b/btop/btop_1.4.6-2_amd64.deb}"
 BTOP_RAPL_RULE_PATH="/etc/tmpfiles.d/99-btop-rapl.conf"
@@ -267,8 +268,18 @@ cleanup_journal() {
   run_sudo journalctl --vacuum-time=7d
 }
 
-install_global_agent_charter() {
-  run_repo_script "scripts/install-global-agent-charter.sh" bash --apply
+install_agent_setup() {
+  case "$AGENT_SETUP_PROFILE" in
+    personal|work) ;;
+    *)
+      echo "AGENT_SETUP_PROFILE must be personal or work."
+      exit 1
+      ;;
+  esac
+  run_repo_script "scripts/install-agent-setup.sh" bash setup \
+    --profile "$AGENT_SETUP_PROFILE" \
+    --scope user \
+    --agent both
 }
 
 main() {
@@ -290,7 +301,7 @@ main() {
   install_rust
   install_docker
   run_repo_script "ubuntu/bootstrap-desktop.sh" bash
-  install_global_agent_charter
+  install_agent_setup
   cleanup_journal
 }
 

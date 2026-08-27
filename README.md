@@ -10,6 +10,13 @@
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstrap.sh?$(date +%s)" | sh
 ```
 
+在工作机器上使用精简的 Agent skill profile：
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstrap.sh?$(date +%s)" |
+  AGENT_SETUP_PROFILE=work sh
+```
+
 ### 安装的软件
 
 以下清单覆盖 `bootstrap.sh` 及其调用的子脚本直接声明、下载或安装的全部软件；不展开 APT、SDKMAN、NVM 等包管理器自动解析的 transitive dependencies。
@@ -33,7 +40,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 | 输入法 | `ibus-rime`、`rime-data-double-pinyin` | 使用 IBus 输入法框架和 Rime（中州韵）引擎；只启用小鹤双拼方案，中文模式默认输出简体字，候选词横向排列 |
 | 编程字体 | Input Mono | 从 Input 官网下载完整字体包，将 `InputMono-*.ttf` 安装到当前用户的字体目录 |
 
-除软件外，主脚本还会安装 Codex 与 Claude Code 的全局 Agent 工作约定文件。脚本会跳过大部分已安装的软件，因此可以重复执行；具体是否跳过以各子脚本的检测结果为准。
+除软件外，主脚本还会安装 Codex 与 Claude Code 的全局 Agent 工作约定和 personal profile skills。设置 `AGENT_SETUP_PROFILE=work` 可以改装精简的工作版 profile。脚本会跳过大部分已安装的软件，因此可以重复执行；具体是否跳过以各子脚本的检测结果为准。
 
 ### 系统与桌面配置
 
@@ -44,7 +51,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 - 将 `vm.swappiness` 设置为 `10`，并写入 `/etc/sysctl.conf`。
 - 为兼容 CopyQ，存在 `/etc/gdm3/custom.conf` 时会禁用 Wayland，并提示是否重启 GDM。重启 GDM 会立即退出当前桌面会话。
 - Docker 用户组变更需要重新登录，或执行 `newgrp docker` 后生效。
-- 安装 Codex 与 Claude Code 的全局 Agent 工作约定，并清理超过 7 天的现有 systemd journal 日志。
+- 安装 Codex 与 Claude Code 的全局 Agent 工作约定及所选 skill profile，并清理超过 7 天的现有 systemd journal 日志。
 
 ## Cleanup Disk (Ubuntu)
 
@@ -74,61 +81,46 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 ./scripts/install-playwright-mcp.sh
 ```
 
-## Matt Pocock Skills for Codex
+## Personal Agent Setup
 
-The installer keeps an unmodified checkout of
-[`mattpocock/skills`](https://github.com/mattpocock/skills) and exposes skills to
-Codex through symlinks. Re-running a command updates the checkout, so local
-patches do not need to be maintained.
-
-Install the five curated work skills in the Codex user scope:
+统一安装器同时支持 Codex 和 Claude Code，并将 skill profile 与安装 scope 作为两个独立维度：
 
 ```bash
-./scripts/install-matt-pocock-skills.sh work
+# 全局 instructions + personal user-scope skills，默认安装到两个 Agent
+./scripts/install-agent-setup.sh setup --profile personal
+
+# 将精简的 work profile 安装到当前 Git 项目，仅供 Codex 使用
+./scripts/install-agent-setup.sh skills \
+  --profile work \
+  --scope project \
+  --agent codex
+
+# 严格离线更新，或无副作用地查看计划
+./scripts/install-agent-setup.sh skills --profile personal --offline
+./scripts/install-agent-setup.sh setup --profile work --dry-run
 ```
 
-The work profile installs `grilling`, `grill-me`, `diagnosing-bugs`,
-`domain-modeling`, and `grill-with-docs` into `~/.agents/skills`.
+`personal` profile 显式固定 upstream promoted 的 25 个 engineering/productivity skills；`work` profile 只包含 `grilling`、`grill-me` 和 `diagnosing-bugs`。普通运行跟随 `mattpocock/skills` 的 `main`，但 upstream 新增目录不会自动进入 manifest。
 
-For a personal Git project, make the complete stable upstream set available in
-that project:
+Linux 可启用 user-scope systemd 定时更新；macOS、Windows Git Bash、WSL 无 systemd 的环境手动重跑即可：
 
 ```bash
-./scripts/install-matt-pocock-skills.sh personal --project ~/Code/my-project
+./scripts/install-agent-setup.sh auto-update enable \
+  --profile personal \
+  --agent both
+./scripts/install-agent-setup.sh auto-update status
+./scripts/install-agent-setup.sh auto-update disable
 ```
 
-The personal profile includes skills under the upstream `engineering`,
-`productivity`, and `misc` groups, while excluding `in-progress` and
-`deprecated`. Skills already present in the user scope are reused instead of
-being installed a second time, which avoids duplicate names in Codex's skill
-selector.
+原 `install-global-agent-charter.sh` 与 `install-matt-pocock-skills.sh` 保留为兼容入口。完整的模型、平台边界、安全策略和迁移语义见 [`docs/agent-setup.md`](./docs/agent-setup.md)。
 
-Enable a weekly user-level systemd timer that updates the five work skills on
-Monday at 09:00:
+运行隔离测试：
 
 ```bash
-./scripts/install-matt-pocock-skills.sh auto-update enable
+./scripts/test-install-agent-setup.sh
 ```
 
-Enabling the timer runs one immediate update before scheduling future runs.
-Inspect or disable it with:
-
-```bash
-./scripts/install-matt-pocock-skills.sh auto-update status
-./scripts/install-matt-pocock-skills.sh auto-update disable
-```
-
-The updater writes combined output to
-`~/.local/state/codex-skill-updater/update.log`. Use `--calendar` to choose a
-different systemd calendar expression. The generated service keeps using the
-installer's absolute path, so re-enable automatic updates if the repository is
-moved.
-
-Run the isolated installer tests with:
-
-```bash
-./scripts/test-install-matt-pocock-skills.sh
-```
+旧测试入口 `test-install-matt-pocock-skills.sh` 会转发到同一测试套件。
 
 ## CPU Thermal Watch (Special Ubuntu Workaround)
 
