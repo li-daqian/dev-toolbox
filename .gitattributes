@@ -1,0 +1,2 @@
+*.sh text eol=lf
+agent/skills/*.txt text eol=lf

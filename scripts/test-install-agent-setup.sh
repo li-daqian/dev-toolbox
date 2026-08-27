@@ -46,21 +46,24 @@ assert_managed_entry() {
 }
 
 create_source_fixture() {
+  local target_source_dir="${1:-$SOURCE_DIR}"
+  local fixture_manifest_root="${2:-$REPO_ROOT/agent/skills}"
   local manifest
   local relative_path
   local skill_name
 
-  mkdir -p "$SOURCE_DIR"
+  mkdir -p "$target_source_dir"
   for manifest in \
-    "$REPO_ROOT/agent/skills/mattpocock-personal.txt" \
-    "$REPO_ROOT/agent/skills/mattpocock-work.txt"; do
+    "$fixture_manifest_root/mattpocock-personal.txt" \
+    "$fixture_manifest_root/mattpocock-work.txt"; do
     while IFS= read -r relative_path || [[ -n "$relative_path" ]]; do
+      relative_path="${relative_path%$'\r'}"
       case "$relative_path" in ''|'#'*) continue ;; esac
       skill_name="$(basename "$relative_path")"
-      mkdir -p "$SOURCE_DIR/$relative_path"
+      mkdir -p "$target_source_dir/$relative_path"
       printf '%s\n' '---' "name: ${skill_name}" 'description: test fixture' '---' \
-        > "$SOURCE_DIR/$relative_path/SKILL.md"
-      printf 'resource for %s\n' "$skill_name" > "$SOURCE_DIR/$relative_path/resource.txt"
+        > "$target_source_dir/$relative_path/SKILL.md"
+      printf 'resource for %s\n' "$skill_name" > "$target_source_dir/$relative_path/resource.txt"
     done < "$manifest"
   done
 }
@@ -72,7 +75,18 @@ run_skills() {
     --claude-user-skills-dir "$CLAUDE_USER_DIR"
 }
 
-create_source_fixture
+create_source_fixture "$SOURCE_DIR" "$REPO_ROOT/agent/skills"
+
+# A Windows-style CRLF checkout must create fixture paths without a trailing CR.
+CRLF_MANIFEST_ROOT="$TEST_ROOT/crlf-manifests"
+CRLF_SOURCE_DIR="$TEST_ROOT/crlf-source"
+mkdir -p "$CRLF_MANIFEST_ROOT"
+awk '{ printf "%s\r\n", $0 }' "$REPO_ROOT/agent/skills/mattpocock-personal.txt" \
+  > "$CRLF_MANIFEST_ROOT/mattpocock-personal.txt"
+awk '{ printf "%s\r\n", $0 }' "$REPO_ROOT/agent/skills/mattpocock-work.txt" \
+  > "$CRLF_MANIFEST_ROOT/mattpocock-work.txt"
+create_source_fixture "$CRLF_SOURCE_DIR" "$CRLF_MANIFEST_ROOT"
+assert_exists "$CRLF_SOURCE_DIR/skills/engineering/ask-matt/SKILL.md"
 mkdir -p "$PROJECT_DIR"
 git -C "$PROJECT_DIR" init -q
 

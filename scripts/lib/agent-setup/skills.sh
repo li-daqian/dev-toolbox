@@ -22,7 +22,8 @@ load_profile_manifest() {
     case "$relative_path" in *'..'*|*' '*) fail "unsafe skill path in ${PROFILE_MANIFEST}: ${relative_path}" ;; esac
 
     skill_name="$(basename "$relative_path")"
-    for existing_name in "${SELECTED_NAMES[@]}"; do
+    # Bash 3.2 with nounset treats an empty array expansion as unbound.
+    for existing_name in ${SELECTED_NAMES[@]+"${SELECTED_NAMES[@]}"}; do
       [[ "$existing_name" != "$skill_name" ]] || fail "duplicate skill name in manifest: ${skill_name}"
     done
     SELECTED_RELATIVE_PATHS+=("$relative_path")
