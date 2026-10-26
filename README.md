@@ -100,7 +100,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 ./scripts/install-agent-setup.sh setup --profile work --dry-run
 ```
 
-两个 profile 都额外安装 `mvanhorn/last30days-skill` 的 `last30days`，用于近期多平台检索与研究；源码独立管理，并跟随安装器和现有定时更新流程更新。首次使用需要 Python 3.12+，更多数据源按上游向导配置。
+两个 profile 都额外安装 `mvanhorn/last30days-skill` 的 `last30days`，用于近期多平台检索与研究；源码独立管理，并跟随安装器和现有定时更新流程更新。首次使用需要 Python 3.12+，更多数据源按上游向导配置。安装器会复用 PATH 中已有的 `yt-dlp`；缺失时从官方 GitHub release 安装到 `~/.local/bin`（Windows Git Bash 使用 `.exe`），用于 YouTube 搜索和字幕提取，无需 sudo。请确保该目录在 Agent 的 PATH 中；`--dry-run` 不下载，`--offline` 下缺失则报错。
 
 `personal` profile 显式固定 upstream promoted 的 25 个 engineering/productivity skills；`work` profile 包含以下 11 个，个人版也包含这些 skills：
 

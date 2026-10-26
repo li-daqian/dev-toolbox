@@ -369,6 +369,7 @@ skill_source_revision() {
 }
 
 apply_skills() {
+  install_last30days_ytdlp
   if [[ "$SOURCE_AVAILABLE" == "true" ]]; then
     if target_includes_agent codex; then
       apply_skills_for_agent codex
@@ -388,6 +389,46 @@ install_skills() {
   preflight_skills
   apply_skills
 }
+
+install_last30days_ytdlp() (
+  local asset="yt-dlp"
+  local bin_dir="${HOME}/.local/bin"
+  local destination
+  local download_dir
+
+  if command_exists yt-dlp; then
+    yt-dlp --version >/dev/null || fail "existing yt-dlp cannot run"
+    log "yt-dlp is already available."
+    return
+  fi
+  [[ "$PLATFORM" != "windows-git-bash" ]] || asset="yt-dlp.exe"
+  destination="${bin_dir}/${asset}"
+  if [[ -x "$destination" ]]; then
+    "$destination" --version >/dev/null || fail "installed yt-dlp cannot run: ${destination}"
+  elif [[ "$DRY_RUN" == "true" ]]; then
+    log "Would install yt-dlp from its official GitHub release to ${destination}"
+    return
+  else
+    [[ "$OFFLINE" == "false" ]] || fail "yt-dlp is missing; run once without --offline to install it"
+    require_command curl
+    if [[ "$asset" == "yt-dlp" ]]; then
+      require_command python3
+    fi
+    mkdir -p "$bin_dir"
+    download_dir="$(mktemp -d "${bin_dir}/.yt-dlp.XXXXXX")"
+    trap 'rm -rf -- "$download_dir"' EXIT
+    curl -fSL --retry 3 "https://github.com/yt-dlp/yt-dlp/releases/latest/download/${asset}" \
+      -o "${download_dir}/${asset}"
+    chmod +x "${download_dir}/${asset}"
+    "${download_dir}/${asset}" --version >/dev/null || fail "downloaded yt-dlp cannot run"
+    mv -- "${download_dir}/${asset}" "$destination"
+    log "Installed yt-dlp: ${destination}"
+  fi
+  case ":${PATH}:" in
+    *":${bin_dir}:"*) ;;
+    *) warn "add ${bin_dir} to PATH and restart your Agent so last30days can find yt-dlp" ;;
+  esac
+)
 
 # Keep provider ownership and source options isolated from the mattpocock profile.
 # Preflight both providers before applying either one to Agent destinations.

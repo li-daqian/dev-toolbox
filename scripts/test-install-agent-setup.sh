@@ -17,6 +17,44 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# Exercise dependency installation without network access or real user writes.
+(
+  source "$SCRIPT_DIR/lib/agent-setup/common.sh"
+  source "$SCRIPT_DIR/lib/agent-setup/skills.sh"
+  export HOME="$TEST_ROOT/dependency-home"
+  PLATFORM=linux
+  DRY_RUN=true
+  OFFLINE=false
+  command_exists() {
+    [[ "$1" != "yt-dlp" ]] && command -v "$1" >/dev/null 2>&1
+  }
+  curl() {
+    printf '%s\n' "$*" >> "$TEST_ROOT/downloads.log"
+    while [[ "$1" != "-o" ]]; do shift; done
+    printf '#!/usr/bin/env bash\nprintf "test-version\\n"\n' > "$2"
+  }
+  install_last30days_ytdlp >/dev/null || exit 1
+  [[ ! -e "$HOME/.local/bin" ]] || exit 1
+  DRY_RUN=false
+  OFFLINE=true
+  if install_last30days_ytdlp >/dev/null 2>&1; then
+    exit 1
+  fi
+  [[ ! -f "$TEST_ROOT/downloads.log" ]] || exit 1
+  OFFLINE=false
+  install_last30days_ytdlp >/dev/null 2>&1 || exit 1
+  [[ "$("$HOME/.local/bin/yt-dlp" --version)" == test-version ]] || exit 1
+  OFFLINE=true
+  install_last30days_ytdlp >/dev/null 2>&1 || exit 1
+  [[ "$(wc -l < "$TEST_ROOT/downloads.log" | tr -d ' ')" == 1 ]] || exit 1
+) || { printf 'FAIL: yt-dlp dependency installation\n' >&2; exit 1; }
+
+# The remaining profile tests reuse an installed dependency.
+mkdir -p "$TEST_ROOT/dependency-bin"
+printf '#!/usr/bin/env bash\nprintf "test-version\\n"\n' > "$TEST_ROOT/dependency-bin/yt-dlp"
+chmod +x "$TEST_ROOT/dependency-bin/yt-dlp"
+export PATH="$TEST_ROOT/dependency-bin:$PATH"
+
 fail_test() {
   printf 'FAIL: %s\n' "$*" >&2
   exit 1
