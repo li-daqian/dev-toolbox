@@ -2,7 +2,8 @@
 
 `scripts/install-agent-setup.sh` is the public installer for this repository's
 personal Agent environment. It manages one global instruction template and a
-reviewed subset of the upstream `mattpocock/skills` repository.
+reviewed subset of the upstream `mattpocock/skills` repository, plus the
+`last30days` skill from `mvanhorn/last30days-skill` in both profiles.
 
 ## Design model
 
@@ -119,6 +120,25 @@ The default source is an unmodified managed checkout of
 requested ref. `--offline` requires an existing checkout and performs no
 network access. `--dry-run` neither fetches nor writes; without an existing
 checkout it reports the unverified plan.
+
+last30days uses a separate checkout at
+`~/.local/share/codex-skill-sources/last30days-skill` (under `$XDG_DATA_HOME`
+when configured). Its complete `skills/last30days` directory is linked or
+copied, including engine scripts and references. Provider-specific ownership
+markers keep it separate from mattpocock reconciliation. Both sources are
+preflighted before Agent destinations are changed.
+
+Use `--last30days-ref`, `--last30days-source-root`, or
+`--last30days-source-dir` to override its ref, managed checkout, or read-only
+external checkout independently of the mattpocock source options. The environment
+variable `AGENT_SETUP_LAST30DAYS_SOURCE_DIR` also supplies an external checkout.
+`--offline` and `--dry-run` apply to both sources. Scheduled updates serialize
+both managed sources and refs; external source overrides are rejected.
+
+The research engine requires Python 3.12+. Installation does not run research,
+read browser cookies, provision optional tools, or configure API keys. Invoke
+`$last30days` in Codex to start the upstream setup/research workflow. Additional
+sources may need credentials or tools; installation alone does not enable them.
 
 Scheduled updates remain Linux-only and user-scope-only. The systemd user timer
 records the selected profile and Agent target, updates skills only, and warns

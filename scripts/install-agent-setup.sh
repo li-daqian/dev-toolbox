@@ -68,6 +68,10 @@ source "${REPO_ROOT}/scripts/lib/agent-setup/auto-update.sh"
 
 UPSTREAM_REPO="https://github.com/mattpocock/skills.git"
 UPSTREAM_REF="main"
+SKILL_PROVIDER="mattpocock"
+LAST30DAYS_REF="main"
+LAST30DAYS_SOURCE_ROOT="${XDG_DATA_HOME:-${HOME}/.local/share}/codex-skill-sources/last30days-skill"
+LAST30DAYS_SOURCE_OVERRIDE="${AGENT_SETUP_LAST30DAYS_SOURCE_DIR:-}"
 COMMAND=""
 AUTO_UPDATE_ACTION=""
 PROFILE=""
@@ -119,7 +123,10 @@ Source options:
   --ref <git-ref>              Upstream Git ref. Default: main
   --source-root <path>         Managed upstream checkout
   --source-dir <path>          Existing checkout; never fetched or modified
-  --offline                    Use an existing checkout without network access
+  --last30days-ref <git-ref>   last30days Git ref. Default: main
+  --last30days-source-root <path>  Managed last30days checkout
+  --last30days-source-dir <path>   Existing last30days checkout; never modified
+  --offline                    Use existing checkouts without network access
 
 Target overrides:
   --codex-user-skills-dir <path>
@@ -206,6 +213,21 @@ while [[ $# -gt 0 ]]; do
     --source-dir)
       [[ $# -ge 2 ]] || fail "--source-dir requires a value"
       EXTERNAL_SOURCE_DIR="$2"
+      shift 2
+      ;;
+    --last30days-ref)
+      [[ $# -ge 2 ]] || fail "--last30days-ref requires a value"
+      LAST30DAYS_REF="$2"
+      shift 2
+      ;;
+    --last30days-source-root)
+      [[ $# -ge 2 ]] || fail "--last30days-source-root requires a value"
+      LAST30DAYS_SOURCE_ROOT="$2"
+      shift 2
+      ;;
+    --last30days-source-dir)
+      [[ $# -ge 2 ]] || fail "--last30days-source-dir requires a value"
+      LAST30DAYS_SOURCE_OVERRIDE="$2"
       shift 2
       ;;
     --codex-user-skills-dir|--user-skills-dir)

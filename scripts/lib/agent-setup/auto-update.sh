@@ -48,12 +48,14 @@ write_auto_update_units() {
       '' \
       '[Service]' \
       'Type=oneshot'
-    printf 'ExecStart=%s skills --profile %s --scope user --agent %s --ref %s --source-root %s\n' \
+    printf 'ExecStart=%s skills --profile %s --scope user --agent %s --ref %s --source-root %s --last30days-ref %s --last30days-source-root %s\n' \
       "$(unit_quote "$INSTALLER_PATH")" \
       "$(unit_quote "$PROFILE")" \
       "$(unit_quote "$AGENT_TARGET")" \
       "$(unit_quote "$UPSTREAM_REF")" \
-      "$(unit_quote "$MANAGED_SOURCE_DIR")"
+      "$(unit_quote "$MANAGED_SOURCE_DIR")" \
+      "$(unit_quote "$LAST30DAYS_REF")" \
+      "$(unit_quote "$LAST30DAYS_SOURCE_ROOT")"
     printf '%s\n' \
       'Environment=GIT_TERMINAL_PROMPT=0' \
       'TimeoutStartSec=15min' \
@@ -98,6 +100,7 @@ enable_auto_update() {
     fail "cannot enable a timer from an ephemeral downloaded installer; use a local repository checkout"
   [[ -f "$INSTALLER_PATH" ]] || fail "installer must be a persistent local file: ${INSTALLER_PATH}"
 
+  [[ -z "$LAST30DAYS_SOURCE_OVERRIDE" ]] || fail "scheduled updates do not support --last30days-source-dir"
   require_linux_systemd_user
   write_auto_update_units
   disable_legacy_auto_update

@@ -107,7 +107,7 @@ managed_copy_matches() {
 
   marker="$(copy_marker_path "$destination")"
   [[ -f "$marker" ]] || return 1
-  grep -Fqx 'provider=mattpocock' "$marker" &&
+  grep -Fqx "provider=${SKILL_PROVIDER}" "$marker" &&
     grep -Fqx "skill=${relative_path}" "$marker"
 }
 
@@ -118,7 +118,7 @@ is_managed_copy() {
 
   marker="$(copy_marker_path "$destination")"
   [[ -f "$marker" ]] || return 1
-  grep -Fqx 'provider=mattpocock' "$marker" || return 1
+  grep -Fqx "provider=${SKILL_PROVIDER}" "$marker" || return 1
   skill_line="$(grep -E '^skill=' "$marker" | head -n 1)"
   [[ -n "$skill_line" ]] || return 1
   [[ "$(basename "${skill_line#skill=}")" == "$(basename "$destination")" ]]
@@ -233,13 +233,14 @@ preflight_skills() {
   if target_includes_agent claude; then
     preflight_skill_target claude
   fi
+  with_last30days_source preflight
 }
 
 write_copy_marker() {
   local destination="$1"
   local relative_path="$2"
   {
-    printf '%s\n' 'provider=mattpocock'
+    printf '%s\n' "provider=${SKILL_PROVIDER}"
     printf 'skill=%s\n' "$relative_path"
   } > "$(copy_marker_path "$destination")"
 }
@@ -376,6 +377,7 @@ apply_skills() {
       apply_skills_for_agent claude
     fi
   fi
+  with_last30days_source apply
   log "Skill profile '${PROFILE}' (${SCOPE}, ${AGENT_TARGET}) is ready from $(skill_source_revision)."
   if [[ "$SCOPE" == "user" ]] && command -v warn_if_timer_configuration_differs >/dev/null 2>&1; then
     warn_if_timer_configuration_differs
@@ -386,3 +388,39 @@ install_skills() {
   preflight_skills
   apply_skills
 }
+
+# Keep provider ownership and source options isolated from the mattpocock profile.
+# Preflight both providers before applying either one to Agent destinations.
+with_last30days_source() (
+  local phase="$1"
+  SKILL_PROVIDER="last30days"
+  UPSTREAM_REPO="https://github.com/mvanhorn/last30days-skill.git"
+  UPSTREAM_REF="$LAST30DAYS_REF"
+  MANAGED_SOURCE_DIR="$LAST30DAYS_SOURCE_ROOT"
+  EXTERNAL_SOURCE_DIR="$LAST30DAYS_SOURCE_OVERRIDE"
+  SELECTED_RELATIVE_PATHS=(skills/last30days)
+  SELECTED_NAMES=(last30days)
+
+  if [[ "$phase" == "preflight" ]]; then
+    prepare_skill_source
+    validate_selected_sources
+    if target_includes_agent codex; then
+      preflight_skill_target codex
+    fi
+    if target_includes_agent claude; then
+      preflight_skill_target claude
+    fi
+  else
+    SOURCE_DIR="${EXTERNAL_SOURCE_DIR:-$MANAGED_SOURCE_DIR}"
+    [[ -d "$SOURCE_DIR" ]] || return 0
+    SOURCE_DIR="$(canonical_dir "$SOURCE_DIR")"
+    SOURCE_AVAILABLE="true"
+    if target_includes_agent codex; then
+      apply_skills_for_agent codex
+    fi
+    if target_includes_agent claude; then
+      apply_skills_for_agent claude
+    fi
+    log "last30days is ready from $(skill_source_revision)."
+  fi
+)

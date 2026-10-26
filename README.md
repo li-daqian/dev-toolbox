@@ -100,6 +100,8 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 ./scripts/install-agent-setup.sh setup --profile work --dry-run
 ```
 
+两个 profile 都额外安装 `mvanhorn/last30days-skill` 的 `last30days`，用于近期多平台检索与研究；源码独立管理，并跟随安装器和现有定时更新流程更新。首次使用需要 Python 3.12+，更多数据源按上游向导配置。
+
 `personal` profile 显式固定 upstream promoted 的 25 个 engineering/productivity skills；`work` profile 包含以下 11 个，个人版也包含这些 skills：
 
 - 讨论与诊断：`grilling`、`grill-me`、`grill-with-docs`、`diagnosing-bugs`

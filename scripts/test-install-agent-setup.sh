@@ -75,6 +75,11 @@ run_skills() {
     --claude-user-skills-dir "$CLAUDE_USER_DIR"
 }
 
+LAST30DAYS_FIXTURE="$TEST_ROOT/last30days-source"
+export AGENT_SETUP_LAST30DAYS_SOURCE_DIR="$LAST30DAYS_FIXTURE"
+mkdir -p "$LAST30DAYS_FIXTURE/skills/last30days/scripts"
+printf '%s\n' '---' 'name: last30days' 'description: test fixture' '---' > "$LAST30DAYS_FIXTURE/skills/last30days/SKILL.md"
+printf '%s\n' 'engine resource' > "$LAST30DAYS_FIXTURE/skills/last30days/scripts/resource.txt"
 create_source_fixture "$SOURCE_DIR" "$REPO_ROOT/agent/skills"
 
 # A Windows-style CRLF checkout must create fixture paths without a trailing CR.
@@ -144,6 +149,8 @@ run_skills --profile personal --scope user --agent both >/dev/null
 assert_managed_entry "$CODEX_USER_DIR/ask-matt"
 assert_managed_entry "$CLAUDE_USER_DIR/writing-for-agents"
 assert_absent "$CODEX_USER_DIR/git-guardrails-claude-code"
+assert_exists "$CODEX_USER_DIR/last30days/scripts/resource.txt"
+assert_exists "$CLAUDE_USER_DIR/last30days/SKILL.md"
 
 run_skills --profile work --scope user --agent both >/dev/null
 for skill_name in grilling grill-me diagnosing-bugs codebase-design domain-modeling \
@@ -240,6 +247,24 @@ bash "$LEGACY_SKILLS" personal \
 assert_managed_entry "$LEGACY_PROJECT_DIR/.agents/skills/ask-matt"
 assert_absent "$LEGACY_PROJECT_DIR/.agents/skills/git-guardrails-claude-code"
 
+# Both profiles retain last30days and preserve all bundled runtime resources.
+assert_exists "$CODEX_USER_DIR/last30days/scripts/resource.txt"
+assert_file_contains "$COPY_CODEX_DIR/last30days/.dev-toolbox-agent-setup" 'provider=last30days'
+LAST30DAYS_CONFLICT="$TEST_ROOT/last30days-conflict"
+mkdir -p "$LAST30DAYS_CONFLICT/last30days"
+printf '%s\n' 'unmanaged' > "$LAST30DAYS_CONFLICT/last30days/SKILL.md"
+if bash "$INSTALLER" skills --profile work --agent codex --source-dir "$SOURCE_DIR" \
+  --codex-user-skills-dir "$LAST30DAYS_CONFLICT" >/dev/null 2>&1; then
+  fail_test "unmanaged last30days must block installation"
+fi
+assert_absent "$LAST30DAYS_CONFLICT/grilling"
+assert_file_contains "$LAST30DAYS_CONFLICT/last30days/SKILL.md" 'unmanaged'
+bash "$INSTALLER" skills --profile work --agent codex --source-dir "$SOURCE_DIR" \
+  --last30days-source-dir "$LAST30DAYS_FIXTURE" --dry-run \
+  --codex-user-skills-dir "$TEST_ROOT/last30days-dry-run" >/dev/null
+assert_absent "$TEST_ROOT/last30days-dry-run"
+unset AGENT_SETUP_LAST30DAYS_SOURCE_DIR
+
 # New systemd units serialize profile/Agent and migrate legacy unit files.
 # Positive scheduler coverage runs on Linux; other matrix jobs verify rejection.
 case "$(uname -s 2>/dev/null || printf unknown)" in
@@ -261,6 +286,7 @@ case "$(uname -s 2>/dev/null || printf unknown)" in
       bash "$INSTALLER" auto-update enable \
         --profile work --agent both \
         --source-root "$SOURCE_DIR" \
+        --last30days-ref v3.30.0 --last30days-source-root "$LAST30DAYS_FIXTURE" \
         --calendar 'Tue *-*-* 10:30:00' \
         --systemd-user-dir "$SYSTEMD_USER_DIR" \
         --state-dir "$UPDATER_STATE_DIR" >/dev/null
@@ -269,6 +295,8 @@ case "$(uname -s 2>/dev/null || printf unknown)" in
     TIMER_PATH="$SYSTEMD_USER_DIR/agent-setup-skills-update.timer"
     assert_file_contains "$SERVICE_PATH" '--profile "work"'
     assert_file_contains "$SERVICE_PATH" '--agent "both"'
+    assert_file_contains "$SERVICE_PATH" '--last30days-ref "v3.30.0"'
+    assert_file_contains "$SERVICE_PATH" "--last30days-source-root \"$LAST30DAYS_FIXTURE\""
     assert_file_contains "$TIMER_PATH" 'OnCalendar=Tue *-*-* 10:30:00'
     assert_absent "$SYSTEMD_USER_DIR/codex-matt-pocock-skills-update.service"
     assert_absent "$SYSTEMD_USER_DIR/codex-matt-pocock-skills-update.timer"
