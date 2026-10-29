@@ -11,8 +11,6 @@ required_bundle_files() {
     scripts/install-agent-setup.sh \
     scripts/lib/agent-setup/common.sh \
     scripts/lib/agent-setup/instructions.sh \
-    scripts/lib/agent-setup/skills.sh \
-    scripts/lib/agent-setup/auto-update.sh \
     agent/global-instructions.md
 }
 
@@ -41,7 +39,7 @@ download_ephemeral_bundle() {
       -o "${bundle_root}/${relative_path}"
   done < <(required_bundle_files)
 
-  AGENT_SETUP_BUNDLE_ROOT="$bundle_root" AGENT_SETUP_EPHEMERAL="true" \
+  AGENT_SETUP_BUNDLE_ROOT="$bundle_root" \
     bash "${bundle_root}/scripts/install-agent-setup.sh" "$@" || status=$?
   status="${status:-0}"
   exit "$status"
@@ -59,87 +57,32 @@ fi
 source "${REPO_ROOT}/scripts/lib/agent-setup/common.sh"
 # shellcheck source=scripts/lib/agent-setup/instructions.sh
 source "${REPO_ROOT}/scripts/lib/agent-setup/instructions.sh"
-# shellcheck source=scripts/lib/agent-setup/skills.sh
-source "${REPO_ROOT}/scripts/lib/agent-setup/skills.sh"
-# shellcheck source=scripts/lib/agent-setup/auto-update.sh
-source "${REPO_ROOT}/scripts/lib/agent-setup/auto-update.sh"
 
-UPSTREAM_REPO="https://github.com/mvanhorn/last30days-skill.git"
-UPSTREAM_REF="main"
-SKILL_PROVIDER="last30days"
-MANAGED_SOURCE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/codex-skill-sources/last30days-skill"
-EXTERNAL_SOURCE_DIR="${AGENT_SETUP_LAST30DAYS_SOURCE_DIR:-}"
 COMMAND=""
-AUTO_UPDATE_ACTION=""
-SCOPE="user"
 AGENT_TARGET="both"
-PROJECT_DIR="$PWD"
-PROJECT_ROOT=""
 DRY_RUN="false"
-OFFLINE="false"
 STDOUT_ONLY="false"
-SOURCE_DIR=""
-SOURCE_AVAILABLE="false"
 INSTRUCTIONS_TEMPLATE="${REPO_ROOT}/agent/global-instructions.md"
-SELECTED_RELATIVE_PATHS=(skills/last30days)
-SELECTED_NAMES=(last30days)
-CODEX_USER_SKILLS_DIR="${HOME}/.agents/skills"
 CLAUDE_HOME_DIR="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"
-CLAUDE_USER_SKILLS_DIR="${CLAUDE_HOME_DIR}/skills"
 CODEX_HOME_DIR="${CODEX_HOME:-${HOME}/.codex}"
 CODEX_INSTRUCTIONS_PATH="${CODEX_HOME_DIR}/AGENTS.md"
 CLAUDE_INSTRUCTIONS_PATH="${CLAUDE_HOME_DIR}/CLAUDE.md"
-AUTO_UPDATE_CALENDAR="Mon *-*-* 09:00:00"
-SYSTEMD_USER_DIR="${XDG_CONFIG_HOME:-${HOME}/.config}/systemd/user"
-AUTO_UPDATE_STATE_DIR="${XDG_STATE_HOME:-${HOME}/.local/state}/agent-setup"
-INSTALLER_PATH="${SCRIPT_DIR}/$(basename "$SCRIPT_SOURCE")"
 
 usage() {
   cat <<'EOF'
 Usage:
   ./scripts/install-agent-setup.sh setup [options]
   ./scripts/install-agent-setup.sh instructions [options]
-  ./scripts/install-agent-setup.sh skills [options]
-  ./scripts/install-agent-setup.sh auto-update <enable|disable|status> [options]
 
-Commands:
-  setup          Install global instructions and the last30days skill
-  instructions   Install global instructions only
-  skills         Install or update last30days only
-  auto-update    Manage the Linux systemd user timer for user-scope skills
+Both commands install global instructions only. Skills use plugin marketplaces.
 
-Dimensions:
-  --scope <user|project>       Skill installation scope. Default: user
+Options:
   --agent <codex|claude|both>  Agent destination. Default: both
-  --project <path>             Git project for project scope. Default: current directory
-
-Source options:
-  --last30days-ref <git-ref>   last30days Git ref. Default: main
-  --last30days-source-root <path>  Managed last30days checkout
-  --last30days-source-dir <path>   Existing last30days checkout; never modified
-  --offline                    Use existing checkouts without network access
-
-Target overrides:
-  --codex-user-skills-dir <path>
-  --claude-user-skills-dir <path>
-  --codex-path <path>
-  --claude-path <path>
-
-Updater options:
-  --calendar <expression>      systemd calendar. Default: Mon *-*-* 09:00:00
-  --systemd-user-dir <path>    systemd user unit directory
-  --state-dir <path>           updater log directory
-
-Other options:
-  --dry-run                    Plan without fetching or writing
-  --stdout                     Print the instruction template (instructions only)
-  --help                       Show this help
-
-Examples:
-  ./scripts/install-agent-setup.sh setup
-  ./scripts/install-agent-setup.sh skills --scope project --agent codex
-  ./scripts/install-agent-setup.sh skills --offline
-  ./scripts/install-agent-setup.sh auto-update enable --agent both
+  --codex-path <path>          Override Codex global instruction file
+  --claude-path <path>         Override Claude Code global instruction file
+  --dry-run                   Preview without writing
+  --stdout                    Print the instruction template (instructions only)
+  --help                      Show this help
 EOF
 }
 
@@ -149,15 +92,8 @@ if [[ $# -eq 0 ]]; then
 fi
 
 case "$1" in
-  setup|instructions|skills)
+  setup|instructions)
     COMMAND="$1"
-    shift
-    ;;
-  auto-update)
-    COMMAND="$1"
-    shift
-    [[ $# -gt 0 ]] || fail "auto-update requires an action: enable, disable, or status"
-    AUTO_UPDATE_ACTION="$1"
     shift
     ;;
   --help|-h)
@@ -171,44 +107,9 @@ esac
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --scope)
-      [[ $# -ge 2 ]] || fail "--scope requires a value"
-      SCOPE="$2"
-      shift 2
-      ;;
     --agent|--target)
       [[ $# -ge 2 ]] || fail "$1 requires a value"
       AGENT_TARGET="$2"
-      shift 2
-      ;;
-    --project)
-      [[ $# -ge 2 ]] || fail "--project requires a value"
-      PROJECT_DIR="$2"
-      shift 2
-      ;;
-    --last30days-ref)
-      [[ $# -ge 2 ]] || fail "--last30days-ref requires a value"
-      UPSTREAM_REF="$2"
-      shift 2
-      ;;
-    --last30days-source-root)
-      [[ $# -ge 2 ]] || fail "--last30days-source-root requires a value"
-      MANAGED_SOURCE_DIR="$2"
-      shift 2
-      ;;
-    --last30days-source-dir)
-      [[ $# -ge 2 ]] || fail "--last30days-source-dir requires a value"
-      EXTERNAL_SOURCE_DIR="$2"
-      shift 2
-      ;;
-    --codex-user-skills-dir|--user-skills-dir)
-      [[ $# -ge 2 ]] || fail "$1 requires a value"
-      CODEX_USER_SKILLS_DIR="$2"
-      shift 2
-      ;;
-    --claude-user-skills-dir)
-      [[ $# -ge 2 ]] || fail "--claude-user-skills-dir requires a value"
-      CLAUDE_USER_SKILLS_DIR="$2"
       shift 2
       ;;
     --codex-path)
@@ -221,27 +122,8 @@ while [[ $# -gt 0 ]]; do
       CLAUDE_INSTRUCTIONS_PATH="$2"
       shift 2
       ;;
-    --calendar)
-      [[ $# -ge 2 ]] || fail "--calendar requires a value"
-      AUTO_UPDATE_CALENDAR="$2"
-      shift 2
-      ;;
-    --systemd-user-dir)
-      [[ $# -ge 2 ]] || fail "--systemd-user-dir requires a value"
-      SYSTEMD_USER_DIR="$2"
-      shift 2
-      ;;
-    --state-dir)
-      [[ $# -ge 2 ]] || fail "--state-dir requires a value"
-      AUTO_UPDATE_STATE_DIR="$2"
-      shift 2
-      ;;
     --dry-run)
       DRY_RUN="true"
-      shift
-      ;;
-    --offline)
-      OFFLINE="true"
       shift
       ;;
     --stdout)
@@ -268,21 +150,4 @@ if [[ "$STDOUT_ONLY" == "true" ]]; then
   exit 0
 fi
 
-case "$COMMAND" in
-  setup)
-    preflight_instructions
-    preflight_skills
-    apply_instructions
-    apply_skills
-    ;;
-  instructions)
-    install_instructions
-    ;;
-  skills)
-    install_skills
-    ;;
-  auto-update)
-    [[ "$DRY_RUN" == "false" ]] || fail "--dry-run is not supported for auto-update management"
-    manage_auto_update
-    ;;
-esac
+install_instructions

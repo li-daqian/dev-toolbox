@@ -33,7 +33,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 | 输入法 | `ibus-rime`、`rime-data-double-pinyin` | 使用 IBus 输入法框架和 Rime（中州韵）引擎；只启用小鹤双拼方案，中文模式默认输出简体字，候选词横向排列 |
 | 编程字体 | Input Mono | 从 Input 官网下载完整字体包，将 `InputMono-*.ttf` 安装到当前用户的字体目录 |
 
-除软件外，主脚本还会安装 Codex 与 Claude Code 的全局 Agent 工作约定和 last30days skill。脚本会跳过大部分已安装的软件，因此可以重复执行；具体是否跳过以各子脚本的检测结果为准。
+除软件外，主脚本还会安装 Codex 与 Claude Code 的全局 Agent 工作约定。脚本会跳过大部分已安装的软件，因此可以重复执行；具体是否跳过以各子脚本的检测结果为准。
 
 ### 系统与桌面配置
 
@@ -44,7 +44,7 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/bootstr
 - 将 `vm.swappiness` 设置为 `10`，并写入 `/etc/sysctl.conf`。
 - 为兼容 CopyQ，存在 `/etc/gdm3/custom.conf` 时会禁用 Wayland，并提示是否重启 GDM。重启 GDM 会立即退出当前桌面会话。
 - Docker 用户组变更需要重新登录，或执行 `newgrp docker` 后生效。
-- 安装 Codex 与 Claude Code 的全局 Agent 工作约定及last30days skill，并清理超过 7 天的现有 systemd journal 日志。
+- 安装 Codex 与 Claude Code 的全局 Agent 工作约定，并清理超过 7 天的现有 systemd journal 日志。
 
 ## Cleanup Disk (Ubuntu)
 
@@ -76,31 +76,25 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 
 ## Personal Agent Setup
 
-统一安装器支持 Codex 和 Claude Code，安装全局工作约定及 `last30days`：
+安装器支持 Codex 和 Claude Code，仅管理全局工作约定：
 
 ```bash
 ./scripts/install-agent-setup.sh setup
-./scripts/install-agent-setup.sh skills --scope project --agent codex
-./scripts/install-agent-setup.sh skills --offline
+./scripts/install-agent-setup.sh instructions --agent codex
 ./scripts/install-agent-setup.sh setup --dry-run
 ```
 
-`last30days` 来自 `mvanhorn/last30days-skill`，用于近期多平台检索与研究，源码独立管理。首次使用需要 Python 3.12+，更多数据源按上游向导配置。安装器复用 PATH 中的 `yt-dlp`；缺失时从官方 GitHub release 安装到 `~/.local/bin`（Windows Git Bash 使用 `.exe`）。请确保该目录在 Agent 的 PATH 中；`--dry-run` 不下载，`--offline` 下缺失则报错。
-
-Matt Pocock skills 改由 Codex plugin marketplace 管理，仓库脚本不再安装或定时更新它们：
+Matt Pocock skills 和 last30days 均通过 Codex plugin marketplace 安装，仓库不再维护 skill checkout、链接、删除或定时更新脚本：
 
 ```bash
 codex plugin marketplace add mattpocock/skills
 codex plugin add mattpocock-skills@mattpocock
+
+codex plugin marketplace add mvanhorn/last30days-skill
+codex plugin add last30days@last30days-skill
 ```
 
-Linux 可为 last30days 启用 user-scope systemd 定时更新；其他平台手动重跑安装器：
-
-```bash
-./scripts/install-agent-setup.sh auto-update enable --agent both
-./scripts/install-agent-setup.sh auto-update status
-./scripts/install-agent-setup.sh auto-update disable
-```
+last30days 用于近期多平台检索与研究。Python 3.12+、Node.js 和 `yt-dlp` 等运行依赖需按上游说明单独准备，并确保在 Agent 的 PATH 中；安装插件不等于安装这些依赖。更多数据源通过上游 setup 配置。
 
 `install-global-agent-charter.sh` 继续提供全局指令的预览和安装入口。平台、scope 与更新行为见 [`docs/agent-setup.md`](./docs/agent-setup.md)。
 

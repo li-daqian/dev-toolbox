@@ -269,7 +269,6 @@ cleanup_journal() {
 
 install_agent_setup() {
   run_repo_script "scripts/install-agent-setup.sh" bash setup \
-    --scope user \
     --agent both
 }
 
