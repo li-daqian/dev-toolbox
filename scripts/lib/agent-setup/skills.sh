@@ -1,38 +1,5 @@
 #!/usr/bin/env bash
 
-load_profile_manifest() {
-  local line
-  local relative_path
-  local skill_name
-  local existing_name
-
-  PROFILE_MANIFEST="${MANIFEST_ROOT}/mattpocock-${PROFILE}.txt"
-  [[ -f "$PROFILE_MANIFEST" ]] || fail "missing profile manifest: ${PROFILE_MANIFEST}"
-
-  SELECTED_RELATIVE_PATHS=()
-  SELECTED_NAMES=()
-  while IFS= read -r line || [[ -n "$line" ]]; do
-    line="${line%$'\r'}"
-    case "$line" in ''|'#'*) continue ;; esac
-    relative_path="$line"
-    case "$relative_path" in
-      skills/engineering/*|skills/productivity/*|skills/misc/*) ;;
-      *) fail "invalid skill path in ${PROFILE_MANIFEST}: ${relative_path}" ;;
-    esac
-    case "$relative_path" in *'..'*|*' '*) fail "unsafe skill path in ${PROFILE_MANIFEST}: ${relative_path}" ;; esac
-
-    skill_name="$(basename "$relative_path")"
-    # Bash 3.2 with nounset treats an empty array expansion as unbound.
-    for existing_name in ${SELECTED_NAMES[@]+"${SELECTED_NAMES[@]}"}; do
-      [[ "$existing_name" != "$skill_name" ]] || fail "duplicate skill name in manifest: ${skill_name}"
-    done
-    SELECTED_RELATIVE_PATHS+=("$relative_path")
-    SELECTED_NAMES+=("$skill_name")
-  done < "$PROFILE_MANIFEST"
-
-  [[ ${#SELECTED_NAMES[@]} -gt 0 ]] || fail "profile manifest is empty: ${PROFILE_MANIFEST}"
-}
-
 prepare_skill_source() {
   SOURCE_AVAILABLE="false"
 
@@ -223,7 +190,6 @@ preflight_skill_target() {
 }
 
 preflight_skills() {
-  load_profile_manifest
   resolve_project_root
   prepare_skill_source
   validate_selected_sources
@@ -233,7 +199,6 @@ preflight_skills() {
   if target_includes_agent claude; then
     preflight_skill_target claude
   fi
-  with_last30days_source preflight
 }
 
 write_copy_marker() {
@@ -339,10 +304,10 @@ prune_managed_skills() {
     selected_name_exists "$skill_name" && continue
     is_managed_destination "$destination" || continue
     if [[ "$DRY_RUN" == "true" ]]; then
-      log "Would remove managed skill outside profile '${PROFILE}': ${destination}"
+      log "Would remove obsolete managed skill: ${destination}"
     else
       remove_managed_destination "$destination"
-      log "Removed managed skill outside profile '${PROFILE}': ${destination}"
+      log "Removed obsolete managed skill: ${destination}"
     fi
   done
   shopt -u nullglob
@@ -378,8 +343,7 @@ apply_skills() {
       apply_skills_for_agent claude
     fi
   fi
-  with_last30days_source apply
-  log "Skill profile '${PROFILE}' (${SCOPE}, ${AGENT_TARGET}) is ready from $(skill_source_revision)."
+  log "last30days (${SCOPE}, ${AGENT_TARGET}) is ready from $(skill_source_revision)."
   if [[ "$SCOPE" == "user" ]] && command -v warn_if_timer_configuration_differs >/dev/null 2>&1; then
     warn_if_timer_configuration_differs
   fi
@@ -428,40 +392,4 @@ install_last30days_ytdlp() (
     *":${bin_dir}:"*) ;;
     *) warn "add ${bin_dir} to PATH and restart your Agent so last30days can find yt-dlp" ;;
   esac
-)
-
-# Keep provider ownership and source options isolated from the mattpocock profile.
-# Preflight both providers before applying either one to Agent destinations.
-with_last30days_source() (
-  local phase="$1"
-  SKILL_PROVIDER="last30days"
-  UPSTREAM_REPO="https://github.com/mvanhorn/last30days-skill.git"
-  UPSTREAM_REF="$LAST30DAYS_REF"
-  MANAGED_SOURCE_DIR="$LAST30DAYS_SOURCE_ROOT"
-  EXTERNAL_SOURCE_DIR="$LAST30DAYS_SOURCE_OVERRIDE"
-  SELECTED_RELATIVE_PATHS=(skills/last30days)
-  SELECTED_NAMES=(last30days)
-
-  if [[ "$phase" == "preflight" ]]; then
-    prepare_skill_source
-    validate_selected_sources
-    if target_includes_agent codex; then
-      preflight_skill_target codex
-    fi
-    if target_includes_agent claude; then
-      preflight_skill_target claude
-    fi
-  else
-    SOURCE_DIR="${EXTERNAL_SOURCE_DIR:-$MANAGED_SOURCE_DIR}"
-    [[ -d "$SOURCE_DIR" ]] || return 0
-    SOURCE_DIR="$(canonical_dir "$SOURCE_DIR")"
-    SOURCE_AVAILABLE="true"
-    if target_includes_agent codex; then
-      apply_skills_for_agent codex
-    fi
-    if target_includes_agent claude; then
-      apply_skills_for_agent claude
-    fi
-    log "last30days is ready from $(skill_source_revision)."
-  fi
 )

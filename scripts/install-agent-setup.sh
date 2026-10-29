@@ -13,9 +13,7 @@ required_bundle_files() {
     scripts/lib/agent-setup/instructions.sh \
     scripts/lib/agent-setup/skills.sh \
     scripts/lib/agent-setup/auto-update.sh \
-    agent/global-instructions.md \
-    agent/skills/mattpocock-personal.txt \
-    agent/skills/mattpocock-work.txt
+    agent/global-instructions.md
 }
 
 bundle_is_complete() {
@@ -66,15 +64,13 @@ source "${REPO_ROOT}/scripts/lib/agent-setup/skills.sh"
 # shellcheck source=scripts/lib/agent-setup/auto-update.sh
 source "${REPO_ROOT}/scripts/lib/agent-setup/auto-update.sh"
 
-UPSTREAM_REPO="https://github.com/mattpocock/skills.git"
+UPSTREAM_REPO="https://github.com/mvanhorn/last30days-skill.git"
 UPSTREAM_REF="main"
-SKILL_PROVIDER="mattpocock"
-LAST30DAYS_REF="main"
-LAST30DAYS_SOURCE_ROOT="${XDG_DATA_HOME:-${HOME}/.local/share}/codex-skill-sources/last30days-skill"
-LAST30DAYS_SOURCE_OVERRIDE="${AGENT_SETUP_LAST30DAYS_SOURCE_DIR:-}"
+SKILL_PROVIDER="last30days"
+MANAGED_SOURCE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/codex-skill-sources/last30days-skill"
+EXTERNAL_SOURCE_DIR="${AGENT_SETUP_LAST30DAYS_SOURCE_DIR:-}"
 COMMAND=""
 AUTO_UPDATE_ACTION=""
-PROFILE=""
 SCOPE="user"
 AGENT_TARGET="both"
 PROJECT_DIR="$PWD"
@@ -82,12 +78,11 @@ PROJECT_ROOT=""
 DRY_RUN="false"
 OFFLINE="false"
 STDOUT_ONLY="false"
-EXTERNAL_SOURCE_DIR=""
 SOURCE_DIR=""
 SOURCE_AVAILABLE="false"
-MANIFEST_ROOT="${REPO_ROOT}/agent/skills"
 INSTRUCTIONS_TEMPLATE="${REPO_ROOT}/agent/global-instructions.md"
-MANAGED_SOURCE_DIR="${XDG_DATA_HOME:-${HOME}/.local/share}/codex-skill-sources/mattpocock-skills"
+SELECTED_RELATIVE_PATHS=(skills/last30days)
+SELECTED_NAMES=(last30days)
 CODEX_USER_SKILLS_DIR="${HOME}/.agents/skills"
 CLAUDE_HOME_DIR="${CLAUDE_CONFIG_DIR:-${HOME}/.claude}"
 CLAUDE_USER_SKILLS_DIR="${CLAUDE_HOME_DIR}/skills"
@@ -102,27 +97,23 @@ INSTALLER_PATH="${SCRIPT_DIR}/$(basename "$SCRIPT_SOURCE")"
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/install-agent-setup.sh setup --profile <personal|work> [options]
+  ./scripts/install-agent-setup.sh setup [options]
   ./scripts/install-agent-setup.sh instructions [options]
-  ./scripts/install-agent-setup.sh skills --profile <personal|work> [options]
+  ./scripts/install-agent-setup.sh skills [options]
   ./scripts/install-agent-setup.sh auto-update <enable|disable|status> [options]
 
 Commands:
-  setup          Install global instructions and the selected skill profile
+  setup          Install global instructions and the last30days skill
   instructions   Install global instructions only
-  skills         Reconcile the selected skill profile only
+  skills         Install or update last30days only
   auto-update    Manage the Linux systemd user timer for user-scope skills
 
 Dimensions:
-  --profile <personal|work>    Exact desired skill set; required for setup/skills
   --scope <user|project>       Skill installation scope. Default: user
   --agent <codex|claude|both>  Agent destination. Default: both
   --project <path>             Git project for project scope. Default: current directory
 
 Source options:
-  --ref <git-ref>              Upstream Git ref. Default: main
-  --source-root <path>         Managed upstream checkout
-  --source-dir <path>          Existing checkout; never fetched or modified
   --last30days-ref <git-ref>   last30days Git ref. Default: main
   --last30days-source-root <path>  Managed last30days checkout
   --last30days-source-dir <path>   Existing last30days checkout; never modified
@@ -145,10 +136,10 @@ Other options:
   --help                       Show this help
 
 Examples:
-  ./scripts/install-agent-setup.sh setup --profile personal
-  ./scripts/install-agent-setup.sh skills --profile work --scope project --agent codex
-  ./scripts/install-agent-setup.sh skills --profile personal --offline
-  ./scripts/install-agent-setup.sh auto-update enable --profile work --agent both
+  ./scripts/install-agent-setup.sh setup
+  ./scripts/install-agent-setup.sh skills --scope project --agent codex
+  ./scripts/install-agent-setup.sh skills --offline
+  ./scripts/install-agent-setup.sh auto-update enable --agent both
 EOF
 }
 
@@ -180,11 +171,6 @@ esac
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --profile)
-      [[ $# -ge 2 ]] || fail "--profile requires a value"
-      PROFILE="$2"
-      shift 2
-      ;;
     --scope)
       [[ $# -ge 2 ]] || fail "--scope requires a value"
       SCOPE="$2"
@@ -200,34 +186,19 @@ while [[ $# -gt 0 ]]; do
       PROJECT_DIR="$2"
       shift 2
       ;;
-    --ref)
-      [[ $# -ge 2 ]] || fail "--ref requires a value"
-      UPSTREAM_REF="$2"
-      shift 2
-      ;;
-    --source-root)
-      [[ $# -ge 2 ]] || fail "--source-root requires a value"
-      MANAGED_SOURCE_DIR="$2"
-      shift 2
-      ;;
-    --source-dir)
-      [[ $# -ge 2 ]] || fail "--source-dir requires a value"
-      EXTERNAL_SOURCE_DIR="$2"
-      shift 2
-      ;;
     --last30days-ref)
       [[ $# -ge 2 ]] || fail "--last30days-ref requires a value"
-      LAST30DAYS_REF="$2"
+      UPSTREAM_REF="$2"
       shift 2
       ;;
     --last30days-source-root)
       [[ $# -ge 2 ]] || fail "--last30days-source-root requires a value"
-      LAST30DAYS_SOURCE_ROOT="$2"
+      MANAGED_SOURCE_DIR="$2"
       shift 2
       ;;
     --last30days-source-dir)
       [[ $# -ge 2 ]] || fail "--last30days-source-dir requires a value"
-      LAST30DAYS_SOURCE_OVERRIDE="$2"
+      EXTERNAL_SOURCE_DIR="$2"
       shift 2
       ;;
     --codex-user-skills-dir|--user-skills-dir)
@@ -289,12 +260,6 @@ done
 
 detect_platform
 validate_common_values
-
-case "$COMMAND" in
-  setup|skills)
-    [[ -n "$PROFILE" ]] || fail "${COMMAND} requires --profile personal or --profile work"
-    ;;
-esac
 
 if [[ "$STDOUT_ONLY" == "true" ]]; then
   [[ "$COMMAND" == "instructions" ]] || fail "--stdout is supported only by the instructions command"

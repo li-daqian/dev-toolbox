@@ -145,7 +145,4 @@ resolve_project_root() {
 validate_common_values() {
   case "$AGENT_TARGET" in codex|claude|both) ;; *) fail "agent must be one of: codex, claude, both" ;; esac
   case "$SCOPE" in user|project) ;; *) fail "scope must be one of: user, project" ;; esac
-  if [[ -n "$PROFILE" ]]; then
-    case "$PROFILE" in personal|work) ;; *) fail "profile must be one of: personal, work" ;; esac
-  fi
 }

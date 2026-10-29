@@ -5,9 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" >/dev/null 2>&1 && pwd -P)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/.." >/dev/null 2>&1 && pwd -P)"
 INSTALLER="${SCRIPT_DIR}/install-agent-setup.sh"
 LEGACY_CHARTER="${SCRIPT_DIR}/install-global-agent-charter.sh"
-LEGACY_SKILLS="${SCRIPT_DIR}/install-matt-pocock-skills.sh"
 TEST_ROOT="$(mktemp -d)"
-SOURCE_DIR="${TEST_ROOT}/source"
 CODEX_USER_DIR="${TEST_ROOT}/codex-user-skills"
 CLAUDE_USER_DIR="${TEST_ROOT}/claude-user-skills"
 PROJECT_DIR="${TEST_ROOT}/project"
@@ -49,7 +47,7 @@ trap cleanup EXIT
   [[ "$(wc -l < "$TEST_ROOT/downloads.log" | tr -d ' ')" == 1 ]] || exit 1
 ) || { printf 'FAIL: yt-dlp dependency installation\n' >&2; exit 1; }
 
-# The remaining profile tests reuse an installed dependency.
+# The remaining installer tests reuse an installed dependency.
 mkdir -p "$TEST_ROOT/dependency-bin"
 printf '#!/usr/bin/env bash\nprintf "test-version\\n"\n' > "$TEST_ROOT/dependency-bin/yt-dlp"
 chmod +x "$TEST_ROOT/dependency-bin/yt-dlp"
@@ -79,38 +77,14 @@ assert_managed_entry() {
   local path="$1"
   assert_exists "$path"
   if [[ ! -L "$path" ]]; then
-    assert_file_contains "$path/.dev-toolbox-agent-setup" 'provider=mattpocock'
+    assert_file_contains "$path/.dev-toolbox-agent-setup" 'provider=last30days'
   fi
 }
 
-create_source_fixture() {
-  local target_source_dir="${1:-$SOURCE_DIR}"
-  local fixture_manifest_root="${2:-$REPO_ROOT/agent/skills}"
-  local manifest
-  local relative_path
-  local skill_name
-
-  mkdir -p "$target_source_dir"
-  for manifest in \
-    "$fixture_manifest_root/mattpocock-personal.txt" \
-    "$fixture_manifest_root/mattpocock-work.txt"; do
-    while IFS= read -r relative_path || [[ -n "$relative_path" ]]; do
-      relative_path="${relative_path%$'\r'}"
-      case "$relative_path" in ''|'#'*) continue ;; esac
-      skill_name="$(basename "$relative_path")"
-      mkdir -p "$target_source_dir/$relative_path"
-      printf '%s\n' '---' "name: ${skill_name}" 'description: test fixture' '---' \
-        > "$target_source_dir/$relative_path/SKILL.md"
-      printf 'resource for %s\n' "$skill_name" > "$target_source_dir/$relative_path/resource.txt"
-    done < "$manifest"
-  done
-}
-
 run_skills() {
-  bash "$INSTALLER" skills "$@" \
-    --source-dir "$SOURCE_DIR" \
+  bash "$INSTALLER" skills \
     --codex-user-skills-dir "$CODEX_USER_DIR" \
-    --claude-user-skills-dir "$CLAUDE_USER_DIR"
+    --claude-user-skills-dir "$CLAUDE_USER_DIR" "$@"
 }
 
 LAST30DAYS_FIXTURE="$TEST_ROOT/last30days-source"
@@ -118,25 +92,8 @@ export AGENT_SETUP_LAST30DAYS_SOURCE_DIR="$LAST30DAYS_FIXTURE"
 mkdir -p "$LAST30DAYS_FIXTURE/skills/last30days/scripts"
 printf '%s\n' '---' 'name: last30days' 'description: test fixture' '---' > "$LAST30DAYS_FIXTURE/skills/last30days/SKILL.md"
 printf '%s\n' 'engine resource' > "$LAST30DAYS_FIXTURE/skills/last30days/scripts/resource.txt"
-create_source_fixture "$SOURCE_DIR" "$REPO_ROOT/agent/skills"
-
-# A Windows-style CRLF checkout must create fixture paths without a trailing CR.
-CRLF_MANIFEST_ROOT="$TEST_ROOT/crlf-manifests"
-CRLF_SOURCE_DIR="$TEST_ROOT/crlf-source"
-mkdir -p "$CRLF_MANIFEST_ROOT"
-awk '{ printf "%s\r\n", $0 }' "$REPO_ROOT/agent/skills/mattpocock-personal.txt" \
-  > "$CRLF_MANIFEST_ROOT/mattpocock-personal.txt"
-awk '{ printf "%s\r\n", $0 }' "$REPO_ROOT/agent/skills/mattpocock-work.txt" \
-  > "$CRLF_MANIFEST_ROOT/mattpocock-work.txt"
-create_source_fixture "$CRLF_SOURCE_DIR" "$CRLF_MANIFEST_ROOT"
-assert_exists "$CRLF_SOURCE_DIR/skills/engineering/ask-matt/SKILL.md"
 mkdir -p "$PROJECT_DIR"
 git -C "$PROJECT_DIR" init -q
-
-personal_count="$(grep -Ev '^[[:space:]]*(#|$)' "$REPO_ROOT/agent/skills/mattpocock-personal.txt" | wc -l | tr -d ' ')"
-work_count="$(grep -Ev '^[[:space:]]*(#|$)' "$REPO_ROOT/agent/skills/mattpocock-work.txt" | wc -l | tr -d ' ')"
-[[ "$personal_count" == "24" ]] || fail_test "personal manifest should contain 24 skills"
-[[ "$work_count" == "11" ]] || fail_test "work manifest should contain 11 skills"
 
 bash "$INSTALLER" --help >/dev/null
 bash "$INSTALLER" instructions --stdout | cmp - "$REPO_ROOT/agent/global-instructions.md"
@@ -182,128 +139,99 @@ case "$(uname -s 2>/dev/null || printf unknown)" in
     ;;
 esac
 
-# User scope installs both Agents, then reconciles personal down to work.
-run_skills --profile personal --scope user --agent both >/dev/null
-assert_managed_entry "$CODEX_USER_DIR/ask-matt"
-assert_managed_entry "$CLAUDE_USER_DIR/writing-for-agents"
-assert_absent "$CODEX_USER_DIR/git-guardrails-claude-code"
+# User scope installs both Agents and preserves full skill resources.
+run_skills --scope user --agent both >/dev/null
+assert_managed_entry "$CODEX_USER_DIR/last30days"
+assert_managed_entry "$CLAUDE_USER_DIR/last30days"
 assert_exists "$CODEX_USER_DIR/last30days/scripts/resource.txt"
-assert_exists "$CLAUDE_USER_DIR/last30days/SKILL.md"
+run_skills --scope user --agent both >/dev/null
 
-run_skills --profile work --scope user --agent both >/dev/null
-for skill_name in grilling grill-me diagnosing-bugs codebase-design domain-modeling \
-  grill-with-docs improve-codebase-architecture handoff teach writing-for-agents to-questionnaire; do
-  assert_managed_entry "$CODEX_USER_DIR/$skill_name"
-  assert_managed_entry "$CLAUDE_USER_DIR/$skill_name"
-done
-assert_absent "$CODEX_USER_DIR/ask-matt"
-assert_absent "$CLAUDE_USER_DIR/code-review"
-
-# Project scope reuses exact user-scope entries and installs the remainder at Git root.
-run_skills --profile personal --scope project --agent both --project "$PROJECT_DIR" >/dev/null
-assert_absent "$PROJECT_DIR/.agents/skills/grilling"
-assert_absent "$PROJECT_DIR/.claude/skills/grilling"
-assert_managed_entry "$PROJECT_DIR/.agents/skills/ask-matt"
-assert_managed_entry "$PROJECT_DIR/.claude/skills/ask-matt"
+# Project scope reuses exact user-scope entries.
+run_skills --scope project --agent both --project "$PROJECT_DIR" >/dev/null
+assert_absent "$PROJECT_DIR/.agents/skills/last30days"
+assert_absent "$PROJECT_DIR/.claude/skills/last30days"
+run_skills --scope project --agent codex --project "$PROJECT_DIR" \
+  --codex-user-skills-dir "$TEST_ROOT/empty-user" >/dev/null
+assert_managed_entry "$PROJECT_DIR/.agents/skills/last30days"
 
 # A different user-scope implementation must block project installation.
-mkdir -p "$CODEX_USER_DIR/wait-what"
-printf '%s\n' 'unknown implementation' > "$CODEX_USER_DIR/wait-what/SKILL.md"
-if run_skills --profile personal --scope project --agent codex --project "$PROJECT_DIR" >/dev/null 2>&1; then
+CONFLICT_USER_DIR="$TEST_ROOT/conflict-user"
+mkdir -p "$CONFLICT_USER_DIR/last30days"
+printf '%s\n' 'unknown implementation' > "$CONFLICT_USER_DIR/last30days/SKILL.md"
+if run_skills --scope project --agent codex --project "$PROJECT_DIR" \
+  --codex-user-skills-dir "$CONFLICT_USER_DIR" >/dev/null 2>&1; then
   fail_test "expected a different user-scope skill to block project installation"
 fi
-rm -rf -- "$CODEX_USER_DIR/wait-what"
 
 # Cross-Agent preflight prevents partial instruction or skill writes.
 ATOMIC_CODEX_SKILLS="$TEST_ROOT/atomic-codex-skills"
 ATOMIC_CLAUDE_SKILLS="$TEST_ROOT/atomic-claude-skills"
 ATOMIC_CODEX_PATH="$TEST_ROOT/atomic-codex/AGENTS.md"
 ATOMIC_CLAUDE_PATH="$TEST_ROOT/atomic-claude/CLAUDE.md"
-mkdir -p "$ATOMIC_CLAUDE_SKILLS/grilling"
-printf '%s\n' 'unmanaged' > "$ATOMIC_CLAUDE_SKILLS/grilling/SKILL.md"
-if bash "$INSTALLER" setup --profile work --scope user --agent both \
-  --source-dir "$SOURCE_DIR" \
+mkdir -p "$ATOMIC_CLAUDE_SKILLS/last30days"
+printf '%s\n' 'unmanaged' > "$ATOMIC_CLAUDE_SKILLS/last30days/SKILL.md"
+if bash "$INSTALLER" setup --scope user --agent both \
   --codex-user-skills-dir "$ATOMIC_CODEX_SKILLS" \
   --claude-user-skills-dir "$ATOMIC_CLAUDE_SKILLS" \
   --codex-path "$ATOMIC_CODEX_PATH" \
   --claude-path "$ATOMIC_CLAUDE_PATH" >/dev/null 2>&1; then
   fail_test "expected cross-Agent collision to fail"
 fi
-assert_absent "$ATOMIC_CODEX_SKILLS/grilling"
+assert_absent "$ATOMIC_CODEX_SKILLS/last30days"
 assert_absent "$ATOMIC_CODEX_PATH"
 assert_absent "$ATOMIC_CLAUDE_PATH"
 
 # Windows Git Bash mode uses refreshable managed copies.
 COPY_CODEX_DIR="$TEST_ROOT/copy-codex-skills"
 AGENT_SETUP_PLATFORM=windows-git-bash bash "$INSTALLER" skills \
-  --profile work --scope user --agent codex \
-  --source-dir "$SOURCE_DIR" \
+  --scope user --agent codex \
   --codex-user-skills-dir "$COPY_CODEX_DIR" >/dev/null
-assert_managed_entry "$COPY_CODEX_DIR/grilling"
-[[ ! -L "$COPY_CODEX_DIR/grilling" ]] || fail_test "Git Bash mode should use a copy"
-assert_file_contains "$COPY_CODEX_DIR/grilling/resource.txt" 'resource for grilling'
-printf '%s\n' 'updated resource' > "$SOURCE_DIR/skills/productivity/grilling/resource.txt"
+assert_managed_entry "$COPY_CODEX_DIR/last30days"
+[[ ! -L "$COPY_CODEX_DIR/last30days" ]] || fail_test "Git Bash mode should use a copy"
+assert_file_contains "$COPY_CODEX_DIR/last30days/scripts/resource.txt" 'engine resource'
+printf '%s\n' 'updated resource' > "$LAST30DAYS_FIXTURE/skills/last30days/scripts/resource.txt"
 AGENT_SETUP_PLATFORM=windows-git-bash bash "$INSTALLER" skills \
-  --profile work --scope user --agent codex \
-  --source-dir "$SOURCE_DIR" \
+  --scope user --agent codex \
   --codex-user-skills-dir "$COPY_CODEX_DIR" >/dev/null
-assert_file_contains "$COPY_CODEX_DIR/grilling/resource.txt" 'updated resource'
+assert_file_contains "$COPY_CODEX_DIR/last30days/scripts/resource.txt" 'updated resource'
 
 # Strict offline and dry-run behavior.
-if bash "$INSTALLER" skills --profile work --offline \
-  --source-root "$TEST_ROOT/missing-source" \
+if AGENT_SETUP_LAST30DAYS_SOURCE_DIR= bash "$INSTALLER" skills --offline \
+  --last30days-source-root "$TEST_ROOT/missing-source" \
   --codex-user-skills-dir "$TEST_ROOT/offline-target" >/dev/null 2>&1; then
   fail_test "offline mode should require an existing checkout"
 fi
-bash "$INSTALLER" skills --profile work --dry-run \
-  --source-root "$TEST_ROOT/dry-run-source" \
+AGENT_SETUP_LAST30DAYS_SOURCE_DIR= bash "$INSTALLER" skills --dry-run \
+  --last30days-source-root "$TEST_ROOT/dry-run-source" \
   --codex-user-skills-dir "$TEST_ROOT/dry-run-target" >/dev/null 2>&1
 assert_absent "$TEST_ROOT/dry-run-source"
 assert_absent "$TEST_ROOT/dry-run-target"
 
-# Legacy wrappers preserve charter preview/apply and old skill profile mappings.
+# The charter wrapper preserves preview/apply.
 LEGACY_CODEX_PATH="$TEST_ROOT/legacy-codex/AGENTS.md"
 bash "$LEGACY_CHARTER" --target codex --codex-path "$LEGACY_CODEX_PATH" >/dev/null
 assert_absent "$LEGACY_CODEX_PATH"
 bash "$LEGACY_CHARTER" --target codex --apply --codex-path "$LEGACY_CODEX_PATH" >/dev/null
 assert_exists "$LEGACY_CODEX_PATH"
 
-LEGACY_USER_DIR="$TEST_ROOT/legacy-user-skills"
-bash "$LEGACY_SKILLS" work --source-dir "$SOURCE_DIR" --user-skills-dir "$LEGACY_USER_DIR" >/dev/null
-assert_managed_entry "$LEGACY_USER_DIR/grilling"
-assert_managed_entry "$LEGACY_USER_DIR/domain-modeling"
-assert_managed_entry "$LEGACY_USER_DIR/grill-with-docs"
-assert_absent "$LEGACY_USER_DIR/code-review"
-
-LEGACY_PROJECT_DIR="$TEST_ROOT/legacy-project"
-mkdir -p "$LEGACY_PROJECT_DIR"
-git -C "$LEGACY_PROJECT_DIR" init -q
-bash "$LEGACY_SKILLS" personal \
-  --source-dir "$SOURCE_DIR" \
-  --user-skills-dir "$TEST_ROOT/legacy-personal-user-skills" \
-  --project "$LEGACY_PROJECT_DIR" >/dev/null
-assert_managed_entry "$LEGACY_PROJECT_DIR/.agents/skills/ask-matt"
-assert_absent "$LEGACY_PROJECT_DIR/.agents/skills/git-guardrails-claude-code"
-
-# Both profiles retain last30days and preserve all bundled runtime resources.
+# last30days preserves all bundled runtime resources.
 assert_exists "$CODEX_USER_DIR/last30days/scripts/resource.txt"
 assert_file_contains "$COPY_CODEX_DIR/last30days/.dev-toolbox-agent-setup" 'provider=last30days'
 LAST30DAYS_CONFLICT="$TEST_ROOT/last30days-conflict"
 mkdir -p "$LAST30DAYS_CONFLICT/last30days"
 printf '%s\n' 'unmanaged' > "$LAST30DAYS_CONFLICT/last30days/SKILL.md"
-if bash "$INSTALLER" skills --profile work --agent codex --source-dir "$SOURCE_DIR" \
+if bash "$INSTALLER" skills --agent codex \
   --codex-user-skills-dir "$LAST30DAYS_CONFLICT" >/dev/null 2>&1; then
   fail_test "unmanaged last30days must block installation"
 fi
-assert_absent "$LAST30DAYS_CONFLICT/grilling"
 assert_file_contains "$LAST30DAYS_CONFLICT/last30days/SKILL.md" 'unmanaged'
-bash "$INSTALLER" skills --profile work --agent codex --source-dir "$SOURCE_DIR" \
+bash "$INSTALLER" skills --agent codex \
   --last30days-source-dir "$LAST30DAYS_FIXTURE" --dry-run \
   --codex-user-skills-dir "$TEST_ROOT/last30days-dry-run" >/dev/null
 assert_absent "$TEST_ROOT/last30days-dry-run"
 unset AGENT_SETUP_LAST30DAYS_SOURCE_DIR
 
-# New systemd units serialize profile/Agent and migrate legacy unit files.
+# systemd units serialize only the last30days source and Agent target.
 # Positive scheduler coverage runs on Linux; other matrix jobs verify rejection.
 case "$(uname -s 2>/dev/null || printf unknown)" in
   Linux)
@@ -317,13 +245,10 @@ case "$(uname -s 2>/dev/null || printf unknown)" in
       'printf "%s\n" "$*" >> "${SYSTEMCTL_LOG:?}"' \
       > "$FAKE_BIN/systemctl"
     chmod +x "$FAKE_BIN/systemctl"
-    printf '%s\n' legacy > "$SYSTEMD_USER_DIR/codex-matt-pocock-skills-update.service"
-    printf '%s\n' legacy > "$SYSTEMD_USER_DIR/codex-matt-pocock-skills-update.timer"
 
     PATH="$FAKE_BIN:$PATH" SYSTEMCTL_LOG="$SYSTEMCTL_LOG" \
       bash "$INSTALLER" auto-update enable \
-        --profile work --agent both \
-        --source-root "$SOURCE_DIR" \
+        --agent both \
         --last30days-ref v3.30.0 --last30days-source-root "$LAST30DAYS_FIXTURE" \
         --calendar 'Tue *-*-* 10:30:00' \
         --systemd-user-dir "$SYSTEMD_USER_DIR" \
@@ -331,14 +256,10 @@ case "$(uname -s 2>/dev/null || printf unknown)" in
 
     SERVICE_PATH="$SYSTEMD_USER_DIR/agent-setup-skills-update.service"
     TIMER_PATH="$SYSTEMD_USER_DIR/agent-setup-skills-update.timer"
-    assert_file_contains "$SERVICE_PATH" '--profile "work"'
     assert_file_contains "$SERVICE_PATH" '--agent "both"'
     assert_file_contains "$SERVICE_PATH" '--last30days-ref "v3.30.0"'
     assert_file_contains "$SERVICE_PATH" "--last30days-source-root \"$LAST30DAYS_FIXTURE\""
     assert_file_contains "$TIMER_PATH" 'OnCalendar=Tue *-*-* 10:30:00'
-    assert_absent "$SYSTEMD_USER_DIR/codex-matt-pocock-skills-update.service"
-    assert_absent "$SYSTEMD_USER_DIR/codex-matt-pocock-skills-update.timer"
-    assert_file_contains "$SYSTEMCTL_LOG" '--user disable --now codex-matt-pocock-skills-update.timer'
 
     PATH="$FAKE_BIN:$PATH" SYSTEMCTL_LOG="$SYSTEMCTL_LOG" \
       bash "$INSTALLER" auto-update disable \
@@ -348,10 +269,10 @@ case "$(uname -s 2>/dev/null || printf unknown)" in
     assert_absent "$TIMER_PATH"
     ;;
   *)
-    if bash "$INSTALLER" auto-update enable --profile work >/dev/null 2>&1; then
+    if bash "$INSTALLER" auto-update enable >/dev/null 2>&1; then
       fail_test "auto-update should be rejected outside Linux/systemd WSL"
     fi
     ;;
 esac
 
-printf 'PASS: Agent setup profiles, scopes, Agents, platforms, safety, wrappers, and updater\n'
+printf 'PASS: Agent setup instructions, last30days, scopes, Agents, platforms, safety, wrapper, and updater\n'

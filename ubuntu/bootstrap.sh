@@ -2,7 +2,6 @@
 set -euo pipefail
 
 RAW_BASE="${RAW_BASE:-https://raw.githubusercontent.com/li-daqian/dev-toolbox/main}"
-AGENT_SETUP_PROFILE="${AGENT_SETUP_PROFILE:-personal}"
 BTOP_MIN_VERSION="${BTOP_MIN_VERSION:-1.4.0}"
 BTOP_OFFICIAL_DEB_URL="${BTOP_OFFICIAL_DEB_URL:-https://archive.ubuntu.com/ubuntu/pool/universe/b/btop/btop_1.4.6-2_amd64.deb}"
 BTOP_RAPL_RULE_PATH="/etc/tmpfiles.d/99-btop-rapl.conf"
@@ -269,15 +268,7 @@ cleanup_journal() {
 }
 
 install_agent_setup() {
-  case "$AGENT_SETUP_PROFILE" in
-    personal|work) ;;
-    *)
-      echo "AGENT_SETUP_PROFILE must be personal or work."
-      exit 1
-      ;;
-  esac
   run_repo_script "scripts/install-agent-setup.sh" bash setup \
-    --profile "$AGENT_SETUP_PROFILE" \
     --scope user \
     --agent both
 }

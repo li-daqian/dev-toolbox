@@ -2,8 +2,6 @@
 
 AUTO_UPDATE_SERVICE="agent-setup-skills-update.service"
 AUTO_UPDATE_TIMER="agent-setup-skills-update.timer"
-LEGACY_AUTO_UPDATE_SERVICE="codex-matt-pocock-skills-update.service"
-LEGACY_AUTO_UPDATE_TIMER="codex-matt-pocock-skills-update.timer"
 
 unit_quote() {
   local value="$1"
@@ -48,14 +46,11 @@ write_auto_update_units() {
       '' \
       '[Service]' \
       'Type=oneshot'
-    printf 'ExecStart=%s skills --profile %s --scope user --agent %s --ref %s --source-root %s --last30days-ref %s --last30days-source-root %s\n' \
+    printf 'ExecStart=%s skills --scope user --agent %s --last30days-ref %s --last30days-source-root %s\n' \
       "$(unit_quote "$INSTALLER_PATH")" \
-      "$(unit_quote "$PROFILE")" \
       "$(unit_quote "$AGENT_TARGET")" \
       "$(unit_quote "$UPSTREAM_REF")" \
-      "$(unit_quote "$MANAGED_SOURCE_DIR")" \
-      "$(unit_quote "$LAST30DAYS_REF")" \
-      "$(unit_quote "$LAST30DAYS_SOURCE_ROOT")"
+      "$(unit_quote "$MANAGED_SOURCE_DIR")"
     printf '%s\n' \
       'Environment=GIT_TERMINAL_PROMPT=0' \
       'TimeoutStartSec=15min' \
@@ -82,34 +77,21 @@ write_auto_update_units() {
   systemd-analyze verify "$service_path" "$timer_path" >/dev/null
 }
 
-disable_legacy_auto_update() {
-  local legacy_service_path="${SYSTEMD_USER_DIR}/${LEGACY_AUTO_UPDATE_SERVICE}"
-  local legacy_timer_path="${SYSTEMD_USER_DIR}/${LEGACY_AUTO_UPDATE_TIMER}"
-
-  systemctl --user disable --now "$LEGACY_AUTO_UPDATE_TIMER" >/dev/null 2>&1 || true
-  systemctl --user stop "$LEGACY_AUTO_UPDATE_SERVICE" >/dev/null 2>&1 || true
-  [[ ! -e "$legacy_service_path" ]] || unlink "$legacy_service_path"
-  [[ ! -e "$legacy_timer_path" ]] || unlink "$legacy_timer_path"
-}
-
 enable_auto_update() {
-  [[ -n "$PROFILE" ]] || fail "auto-update enable requires --profile personal or --profile work"
   [[ "$SCOPE" == "user" ]] || fail "scheduled updates support only user scope"
-  [[ -z "$EXTERNAL_SOURCE_DIR" ]] || fail "scheduled updates do not support --source-dir"
+  [[ -z "$EXTERNAL_SOURCE_DIR" ]] || fail "scheduled updates do not support --last30days-source-dir"
   [[ "${AGENT_SETUP_EPHEMERAL:-false}" != "true" ]] ||
     fail "cannot enable a timer from an ephemeral downloaded installer; use a local repository checkout"
   [[ -f "$INSTALLER_PATH" ]] || fail "installer must be a persistent local file: ${INSTALLER_PATH}"
 
-  [[ -z "$LAST30DAYS_SOURCE_OVERRIDE" ]] || fail "scheduled updates do not support --last30days-source-dir"
   require_linux_systemd_user
   write_auto_update_units
-  disable_legacy_auto_update
   systemctl --user daemon-reload
 
   log "Running an immediate skill update before enabling the timer."
   systemctl --user start "$AUTO_UPDATE_SERVICE"
   systemctl --user enable --now "$AUTO_UPDATE_TIMER"
-  log "Automatic skill updates enabled: profile=${PROFILE}, agent=${AGENT_TARGET}, calendar=${AUTO_UPDATE_CALENDAR}"
+  log "Automatic skill updates enabled: agent=${AGENT_TARGET}, calendar=${AUTO_UPDATE_CALENDAR}"
   log "Log: ${AUTO_UPDATE_STATE_DIR}/update.log"
   systemctl --user list-timers --all "$AUTO_UPDATE_TIMER" --no-pager
 }
@@ -124,7 +106,6 @@ disable_auto_update() {
 
   systemctl --user disable --now "$AUTO_UPDATE_TIMER" >/dev/null 2>&1 || true
   systemctl --user stop "$AUTO_UPDATE_SERVICE" >/dev/null 2>&1 || true
-  disable_legacy_auto_update
   [[ ! -e "$service_path" ]] || unlink "$service_path"
   [[ ! -e "$timer_path" ]] || unlink "$timer_path"
   systemctl --user daemon-reload
@@ -136,9 +117,6 @@ show_auto_update_status() {
   local timer_name="$AUTO_UPDATE_TIMER"
 
   require_linux_systemd_user
-  if [[ ! -e "$(new_timer_path)" && -e "${SYSTEMD_USER_DIR}/${LEGACY_AUTO_UPDATE_TIMER}" ]]; then
-    timer_name="$LEGACY_AUTO_UPDATE_TIMER"
-  fi
   systemctl --user status "$timer_name" --no-pager
   systemctl --user list-timers --all "$timer_name" --no-pager
 }
@@ -148,9 +126,8 @@ warn_if_timer_configuration_differs() {
 
   service_path="$(new_service_path)"
   [[ -f "$service_path" ]] || return 0
-  if ! grep -Fq -- "--profile \"${PROFILE}\"" "$service_path" ||
-    ! grep -Fq -- "--agent \"${AGENT_TARGET}\"" "$service_path"; then
-    warn "active updater configuration differs from this manual install; re-enable auto-update to prevent the timer from restoring another profile or Agent target"
+  if ! grep -Fq -- "--agent \"${AGENT_TARGET}\"" "$service_path"; then
+    warn "active updater configuration differs from this manual install; re-enable auto-update to prevent the timer from restoring another Agent target"
   fi
 }
 

@@ -1,175 +1,86 @@
 # Personal Agent Setup
 
-`scripts/install-agent-setup.sh` is the public installer for this repository's
-personal Agent environment. It manages one global instruction template and a
-reviewed subset of the upstream `mattpocock/skills` repository, plus the
-`last30days` skill from `mvanhorn/last30days-skill` in both profiles.
+`scripts/install-agent-setup.sh` manages the global instruction template and
+`last30days` from `mvanhorn/last30days-skill` for Codex and Claude Code.
+Matt Pocock skills are managed separately by Codex:
 
-## Design model
+```bash
+codex plugin marketplace add mattpocock/skills
+codex plugin add mattpocock-skills@mattpocock
+```
 
-Skill selection and installation location are independent dimensions:
+The repository no longer provides Matt skill installation, removal, profile
+manifests, or scheduled updates. The Agent installer does not manage plugins.
 
-| Dimension | Values | Meaning |
-| --- | --- | --- |
-| Profile | `personal`, `work` | Selects the exact desired skill manifest |
-| Scope | `user`, `project` | Selects a user-wide or Git-project destination |
-| Agent target | `codex`, `claude`, `both` | Selects which supported Agent receives the installation |
+## Commands and destinations
 
-The `personal` manifest contains the explicitly reviewed upstream promoted
-`engineering` and `productivity` skills. The smaller `work` manifest contains
-11 skills: `grilling`, `grill-me`, `grill-with-docs`, `diagnosing-bugs`, `codebase-design`,
-`domain-modeling`, `improve-codebase-architecture`, `handoff`, `teach`,
-`writing-for-agents`, and `to-questionnaire`. All eleven are also in `personal`.
-`domain-modeling` supports the domain-document updates used by architecture
-discussions. New upstream skills never enter a profile merely because a
-directory appeared upstream.
+```bash
+# Instructions + last30days; defaults to user scope and both Agents
+./scripts/install-agent-setup.sh setup
+./scripts/install-agent-setup.sh instructions --agent codex
+./scripts/install-agent-setup.sh skills --scope project --agent claude
+./scripts/install-agent-setup.sh setup --dry-run
+./scripts/install-agent-setup.sh skills --offline
+```
 
-Both profiles preserve upstream invocation policies. `codebase-design`,
-`domain-modeling`, and `writing-for-agents` allow implicit invocation, as do the
-existing `grilling` and `diagnosing-bugs`. The other six work-profile skills,
-including `grill-with-docs`, require explicit invocation. The installer does
-not patch skill metadata.
-
-Instructions are deliberately not profile- or project-specific. They are
-installed only at user scope:
+Instructions always install at user scope, including with `setup --scope project`:
 
 - Codex: `${CODEX_HOME:-~/.codex}/AGENTS.md`
 - Claude Code: `${CLAUDE_CONFIG_DIR:-~/.claude}/CLAUDE.md`
 
-Skills use the Agent-specific discovery paths:
-
-| Scope | Codex | Claude Code |
+| Scope | Codex skills | Claude Code skills |
 | --- | --- | --- |
 | User | `~/.agents/skills` | `${CLAUDE_CONFIG_DIR:-~/.claude}/skills` |
 | Project | `<git-root>/.agents/skills` | `<git-root>/.claude/skills` |
 
-## Platform support
+`--project` selects an explicit Git repository; otherwise project scope uses the
+current directory. The old personal/work profile selection has been removed.
 
-- Linux and macOS: Bash, Git, and directory symlinks.
-- Windows: WSL or Git Bash only. Native PowerShell is not supported.
-- WSL uses Linux semantics and symlinks.
-- Native Windows Git Bash uses managed directory copies because native symlink
-  creation is not reliably available without additional Windows configuration.
+Linux, macOS, and WSL use Bash, Git, and directory symlinks. Windows Git Bash
+uses managed directory copies. Native PowerShell is not supported.
 
-This installer guarantees that the upstream skills are placed where Codex and
-Claude Code can discover them. It does not fork or rewrite upstream prompts to
-hide harness-specific behavioral differences. In particular, upstream reports
-that `diagnosing-bugs` can trigger too eagerly in Codex; it remains an explicit
-member of both profiles by design.
+## Ownership and safety
 
-## Commands
+Unknown files, directories, and links are never overwritten. Managed links must
+resolve inside the selected source; managed copies carry a provider-and-skill
+marker. Project scope reuses an exact managed user-scope installation, and
+rejects a conflicting user-scope implementation. The complete last30days skill
+directory is installed, including scripts and references.
 
-`setup` installs global instructions and reconciles skills. `skills` and
-`instructions` operate on only one component:
+Instruction writes are content-aware. Equal content is left untouched; changed
+regular files are backed up. Symlinks and non-regular instruction targets are
+rejected. Codex users are warned if `AGENTS.override.md` masks `AGENTS.md`.
+All Agent destinations are preflighted before installation begins; unexpected
+failures after writes begin do not have automatic rollback.
 
-```bash
-# profile is required; scope defaults to user and Agent defaults to both
-./scripts/install-agent-setup.sh setup --profile personal
+## Sources and updates
 
-# all four profile/scope combinations are supported
-./scripts/install-agent-setup.sh skills --profile work --scope user
-./scripts/install-agent-setup.sh skills --profile personal --scope project
+The managed last30days checkout defaults to
+`${XDG_DATA_HOME:-~/.local/share}/codex-skill-sources/last30days-skill` at `main`.
+Normal runs fetch the requested ref. `--offline` requires an existing checkout;
+`--dry-run` neither fetches nor writes and reports unverified source contents
+when the checkout is absent.
 
-# project defaults to the current Git repository; an explicit path is optional
-./scripts/install-agent-setup.sh skills \
-  --profile work \
-  --scope project \
-  --project /path/to/repository \
-  --agent claude
+Override the source with `--last30days-ref`, `--last30days-source-root`, or
+`--last30days-source-dir`. An external source directory is never fetched or
+modified. `AGENT_SETUP_LAST30DAYS_SOURCE_DIR` also supplies an external source.
+The research engine requires Python 3.12+. Installation reuses `yt-dlp` from
+PATH, or installs its official GitHub release into `~/.local/bin`. Offline
+installation fails if this dependency is missing. Optional data sources may
+need credentials or tools configured through the upstream setup workflow.
 
-# component-only instruction update
-./scripts/install-agent-setup.sh instructions --agent codex
-
-# no network or destination writes
-./scripts/install-agent-setup.sh setup --profile personal --dry-run
-
-# use an existing managed checkout without fetching
-./scripts/install-agent-setup.sh skills --profile personal --offline
-```
-
-Project scope affects skills only. Even when `setup --scope project` is used,
-the shared instructions still go to the selected Agent's user-global path.
-
-## Safety and ownership
-
-Profiles are reconciled as exact desired state. Installing `work` over a
-previous `personal` installation removes personal-only entries, but only when
-the installer can prove ownership:
-
-- a symlink resolves inside the managed upstream checkout; or
-- a Git Bash copy contains the installer's provider-and-skill marker.
-
-Unknown files, directories, and links are never overwritten. When project
-scope finds the exact same managed skill at user scope, it reuses that entry
-instead of creating a duplicate project entry. The last profile selected for a
-given Agent and scope wins.
-
-Instruction writes are content-aware. Equal content is left untouched. A
-different regular file is backed up before replacement. Symlinks and other
-non-regular targets are rejected. Codex users are warned when a global
-`AGENTS.override.md` masks the installed `AGENTS.md`.
-
-All Agent destinations are preflighted before installation begins. The
-installer does not promise rollback for unexpected failures after writes have
-started, but detectable conflicts fail before any destination is changed.
-
-## Source and update behavior
-
-The default source is an unmodified managed checkout of
-`https://github.com/mattpocock/skills.git` at `main`. A normal run fetches the
-requested ref. `--offline` requires an existing checkout and performs no
-network access. `--dry-run` neither fetches nor writes; without an existing
-checkout it reports the unverified plan.
-
-last30days uses a separate checkout at
-`~/.local/share/codex-skill-sources/last30days-skill` (under `$XDG_DATA_HOME`
-when configured). Its complete `skills/last30days` directory is linked or
-copied, including engine scripts and references. Provider-specific ownership
-markers keep it separate from mattpocock reconciliation. Both sources are
-preflighted before Agent destinations are changed.
-
-Use `--last30days-ref`, `--last30days-source-root`, or
-`--last30days-source-dir` to override its ref, managed checkout, or read-only
-external checkout independently of the mattpocock source options. The environment
-variable `AGENT_SETUP_LAST30DAYS_SOURCE_DIR` also supplies an external checkout.
-`--offline` and `--dry-run` apply to both sources. Scheduled updates serialize
-both managed sources and refs; external source overrides are rejected.
-
-The research engine requires Python 3.12+. Installation does not run research,
-read browser cookies, provision optional tools, or configure API keys. Invoke
-`$last30days` in Codex to start the upstream setup/research workflow. Additional
-sources may need credentials or tools; installation alone does not enable them.
-
-Scheduled updates remain Linux-only and user-scope-only. The systemd user timer
-records the selected profile and Agent target, updates skills only, and warns
-when a manual installation disagrees with its active configuration. Project
-scope, macOS, and Windows are updated by rerunning the installer manually.
-Because the service records the installer's absolute path, re-enable the timer
-after moving this repository.
+Scheduled updates support Linux and systemd-enabled WSL, at user scope only:
 
 ```bash
-./scripts/install-agent-setup.sh auto-update enable \
-  --profile personal \
-  --agent both
+./scripts/install-agent-setup.sh auto-update enable --agent both
 ./scripts/install-agent-setup.sh auto-update status
 ./scripts/install-agent-setup.sh auto-update disable
 ```
 
-## Compatibility
+The timer records the last30days ref, source, and Agent target. It updates skills
+only; external source directories are rejected. Use a persistent checkout and
+re-enable the timer after moving it. Other platforms and project installations
+are updated by rerunning the installer manually.
 
-The previous installers remain as thin wrappers:
-
-- `install-global-agent-charter.sh` preserves preview-by-default and `--apply`.
-- `install-matt-pocock-skills.sh work` maps to work/user/Codex.
-- `install-matt-pocock-skills.sh personal --project ...` maps to
-  personal/project/Codex.
-
-Existing legacy systemd timers continue to call the wrapper. Enabling the new
-timer disables the legacy timer to avoid duplicate updates.
-
-## Deliberate non-goals
-
-- Native Windows PowerShell support.
-- macOS launchd or Windows Task Scheduler integration.
-- Per-Agent forks of third-party skill instructions.
-- A general uninstall command.
+`install-global-agent-charter.sh` remains a wrapper with preview by default and
+`--apply` to install instructions. There is no general uninstall command.
