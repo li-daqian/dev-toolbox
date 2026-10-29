@@ -135,7 +135,7 @@ git -C "$PROJECT_DIR" init -q
 
 personal_count="$(grep -Ev '^[[:space:]]*(#|$)' "$REPO_ROOT/agent/skills/mattpocock-personal.txt" | wc -l | tr -d ' ')"
 work_count="$(grep -Ev '^[[:space:]]*(#|$)' "$REPO_ROOT/agent/skills/mattpocock-work.txt" | wc -l | tr -d ' ')"
-[[ "$personal_count" == "25" ]] || fail_test "personal manifest should contain 25 skills"
+[[ "$personal_count" == "24" ]] || fail_test "personal manifest should contain 24 skills"
 [[ "$work_count" == "11" ]] || fail_test "work manifest should contain 11 skills"
 
 bash "$INSTALLER" --help >/dev/null
