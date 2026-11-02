@@ -35,7 +35,7 @@ assert_file_contains() {
 bash "$INSTALLER" --help >/dev/null
 bash "$INSTALLER" instructions --stdout | cmp - "$REPO_ROOT/agent/global-instructions.md"
 
-# Instructions: dry-run, apply, idempotency, backup, and override warning.
+# Instructions: dry-run, apply, idempotency, and override warning.
 CODEX_PATH="$TEST_ROOT/codex/AGENTS.md"
 CLAUDE_PATH="$TEST_ROOT/claude/CLAUDE.md"
 bash "$INSTALLER" instructions --agent both --dry-run \
@@ -49,12 +49,9 @@ cmp "$CODEX_PATH" "$REPO_ROOT/agent/global-instructions.md"
 cmp "$CLAUDE_PATH" "$REPO_ROOT/agent/global-instructions.md"
 
 bash "$INSTALLER" instructions --agent codex --codex-path "$CODEX_PATH" >/dev/null
-backup_count="$(find "$(dirname "$CODEX_PATH")" -maxdepth 1 -name 'AGENTS.md.bak.*' | wc -l | tr -d ' ')"
-[[ "$backup_count" == "0" ]] || fail_test "idempotent instruction install created a backup"
 printf '%s\n' 'local content' > "$CODEX_PATH"
 bash "$INSTALLER" instructions --agent codex --codex-path "$CODEX_PATH" >/dev/null
-backup_count="$(find "$(dirname "$CODEX_PATH")" -maxdepth 1 -name 'AGENTS.md.bak.*' | wc -l | tr -d ' ')"
-[[ "$backup_count" == "1" ]] || fail_test "changed instructions should create one backup"
+cmp "$CODEX_PATH" "$REPO_ROOT/agent/global-instructions.md"
 
 printf '%s\n' 'override' > "$(dirname "$CODEX_PATH")/AGENTS.override.md"
 bash "$INSTALLER" instructions --agent codex --codex-path "$CODEX_PATH" \
@@ -98,4 +95,4 @@ assert_absent "$LEGACY_CODEX_PATH"
 bash "$LEGACY_CHARTER" --target codex --apply --codex-path "$LEGACY_CODEX_PATH" >/dev/null
 assert_exists "$LEGACY_CODEX_PATH"
 
-printf 'PASS: Agent global instructions, dry-run, idempotency, backups, safety, and wrapper\n'
+printf 'PASS: Agent global instructions, dry-run, idempotency, safety, and wrapper\n'

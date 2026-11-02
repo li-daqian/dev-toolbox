@@ -44,15 +44,6 @@ detect_platform() {
   esac
 }
 
-make_unique_timestamp() {
-  local fraction
-  fraction="$(date +%N 2>/dev/null || true)"
-  case "$fraction" in
-    ''|*[!0-9]*) fraction="$$" ;;
-  esac
-  printf '%s.%s.%s' "$(date +%Y%m%d%H%M%S)" "$fraction" "$$"
-}
-
 validate_common_values() {
   case "$AGENT_TARGET" in codex|claude|both) ;; *) fail "agent must be one of: codex, claude, both" ;; esac
 }

@@ -68,12 +68,6 @@ curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/
 curl -fsSL "https://raw.githubusercontent.com/li-daqian/dev-toolbox/main/ubuntu/install-albert.sh?$(date +%s)" | bash
 ```
 
-## Playwright MCP for Codex and Claude Code
-
-```bash
-./scripts/install-playwright-mcp.sh
-```
-
 ## Personal Agent Setup
 
 安装器支持 Codex 和 Claude Code，仅管理全局工作约定：

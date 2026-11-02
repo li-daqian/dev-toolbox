@@ -34,6 +34,12 @@ failures after writes begin do not have automatic rollback.
 `install-global-agent-charter.sh` remains a wrapper with preview by default and
 `--apply` to install instructions.
 
+Install the repository's explicit project-learning skill separately:
+
+```bash
+./scripts/install-project-architecture-learning.sh
+```
+
 ## Skills via Codex marketplaces
 
 Install skills separately from global instructions:

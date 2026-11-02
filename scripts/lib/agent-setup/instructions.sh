@@ -35,7 +35,6 @@ install_instruction_for_agent() {
   local agent="$1"
   local target_path
   local target_dir
-  local backup_path
   local temp_path
 
   target_path="$(instruction_path_for_agent "$agent")"
@@ -55,11 +54,6 @@ install_instruction_for_agent() {
 
   target_dir="$(dirname "$target_path")"
   mkdir -p "$target_dir"
-  if [[ -f "$target_path" ]]; then
-    backup_path="${target_path}.bak.$(make_unique_timestamp)"
-    cp "$target_path" "$backup_path"
-    log "Backed up existing instructions to ${backup_path}"
-  fi
 
   temp_path="$(mktemp "${target_path}.tmp.XXXXXX")"
   cp "$INSTRUCTIONS_TEMPLATE" "$temp_path"
