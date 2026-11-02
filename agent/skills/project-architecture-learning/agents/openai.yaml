@@ -1,0 +1,7 @@
+interface:
+  display_name: "Project Architecture Learning"
+  short_description: "Learn a project through guided architecture design"
+  default_prompt: "Use $project-architecture-learning to learn this project through problem framing, architecture questions, and implementation comparison."
+
+policy:
+  allow_implicit_invocation: false
